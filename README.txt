@@ -1,0 +1,1 @@
+Una aplicación multiplataforma diseñada para centralizar de forma eficiente las múltiples tareas académicas de todos los estudiantes. Su objetivo es ofrecer un acceso rápido y organizado a los distintos servicios institucionales, así como facilitar el control de horarios, calificaciones y demás actividades escolares.

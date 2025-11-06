@@ -1,0 +1,11 @@
+.idea/
+.gradle/
+build/
+app/build/
+local.properties
+hackaton-22e98-firebase-adminsdk-fbsvc-12914dd5d1.json
+*.log
+app/google-services.json
+app/serviceAccount.json
+app/node_modules/
+app/package-lock.json
