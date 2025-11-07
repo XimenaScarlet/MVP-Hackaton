@@ -1,13 +1,14 @@
-@file:OptIn(
-    androidx.compose.material3.ExperimentalMaterial3Api::class
-)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.example.univapp.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.univapp.location.LocationHelper
 import com.example.univapp.ui.maps.EtaResult
@@ -39,6 +41,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 /* ================= Utils ================= */
 
 private val UTC = LatLng(25.558634, -100.938278)
+private val Primary = Color(0xFF0EA5E9)         // celeste
+private val ChipBg = Color(0xFFF3F4F6)          // gris claro
+private val ChipBorder = Color(0xFFE5E7EB)      // borde gris
 
 private fun boundsOf(points: List<LatLng>): LatLngBounds? {
     if (points.isEmpty()) return null
@@ -106,11 +111,14 @@ fun RouteMapScreen(
 
     Scaffold(
         topBar = {
-            SmallTopAppBar(
+            // Título centrado
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         if (selectedIndex == -1) "Rutas • Todas"
-                        else routes.getOrNull(selectedIndex)?.title ?: "Ruta"
+                        else routes.getOrNull(selectedIndex)?.title ?: "Ruta",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 },
                 navigationIcon = {
@@ -205,12 +213,12 @@ fun RouteMapScreen(
                 }
             }
 
-            /* ====== Barra inferior con carrusel (scroll horizontal) ====== */
+            /* ====== Barra inferior con carrusel ====== */
             RoutesCarouselBar(
                 routes = routes,
                 selectedIndex = selectedIndex,
                 onSelect = { selectedIndex = it },
-                modifier = Modifier.align(Alignment.BottomCenter)   // <-- aquí va el align
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
@@ -230,37 +238,41 @@ private fun RoutesCarouselBar(
         tonalElevation = 8.dp,
         shadowElevation = 10.dp,
         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-        modifier = modifier.fillMaxWidth()  // <-- usamos el modifier recibido
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(
             Modifier
                 .navigationBarsPadding()
-                .padding(vertical = 10.dp)
+                .padding(vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Título "Rutas" centrado
             Text(
                 "Rutas",
                 style = MaterialTheme.typography.labelLarge,
                 color = Color(0xFF475569),
-                modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp)
             )
 
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 item {
                     RouteChipCard(
                         label = "Todas",
                         selected = selectedIndex == -1,
-                        color = Color(0xFF0EA5E9),
                         onClick = { onSelect(-1) }
                     )
                 }
-                itemsIndexed(routes) { i, r ->
+                itemsIndexed(routes) { i, _ ->
                     RouteChipCard(
-                        label = r.id,
+                        label = routes[i].id,
                         selected = selectedIndex == i,
-                        color = r.color,
                         onClick = { onSelect(i) }
                     )
                 }
@@ -270,32 +282,44 @@ private fun RoutesCarouselBar(
     }
 }
 
+/* ---------- Chip estilizado ---------- */
+
 @Composable
 private fun RouteChipCard(
     label: String,
     selected: Boolean,
-    color: Color,
     onClick: () -> Unit
 ) {
-    val bg = if (selected) color.copy(alpha = 0.18f) else Color(0xFFF2F4F7)
-    val fg = if (selected) color else Color(0xFF334155)
+    val bg by animateColorAsState(if (selected) Primary else ChipBg, label = "chip-bg")
+    val fg by animateColorAsState(if (selected) Color.White else Color(0xFF334155), label = "chip-fg")
+    val borderColor = if (selected) Color.Transparent else ChipBorder
 
-    ElevatedCard(
-        onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = bg),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (selected) 6.dp else 2.dp),
+    Surface(
         modifier = Modifier
             .height(64.dp)
             .widthIn(min = 98.dp)
+            .clickable(
+                indication = null, // sin ripple azul feo
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        color = bg,
+        tonalElevation = if (selected) 6.dp else 2.dp,
+        border = BorderStroke(1.dp, borderColor),
+        shadowElevation = if (selected) 6.dp else 2.dp
     ) {
         Row(
             Modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Outlined.DirectionsBus, contentDescription = null, tint = fg)
+            Icon(
+                imageVector = Icons.Outlined.DirectionsBus,
+                contentDescription = null,
+                tint = fg
+            )
             Spacer(Modifier.width(8.dp))
             Text(label, color = fg, fontWeight = FontWeight.SemiBold)
         }

@@ -2,8 +2,7 @@
 
 package com.example.univapp.ui.routesel
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -36,20 +34,20 @@ fun RoutesSelectorScreen(
         }
     ) { pv ->
         Column(
-            Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(pv)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            RouteCard(
-                title = "Ruta Saltillo",
-                subtitle = "Toque para ver paradas y horarios",
+            RouteOutlinedButton(
+                text = "Ruta Saltillo",
                 onClick = onOpenSaltillo
             )
-            RouteCard(
-                title = "Ruta Ramos",
-                subtitle = "Toque para ver paradas y horarios",
+            Spacer(Modifier.height(20.dp))
+            RouteOutlinedButton(
+                text = "Ruta Ramos",
                 onClick = onOpenRamos
             )
         }
@@ -57,36 +55,37 @@ fun RoutesSelectorScreen(
 }
 
 @Composable
-private fun RouteCard(
-    title: String,
-    subtitle: String,
+private fun RouteOutlinedButton(
+    text: String,
     onClick: () -> Unit
 ) {
-    ElevatedCard(
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(2.dp, Color(0xFF0EA5E9)), // celeste
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White,
+            contentColor = Color(0xFF374151) // gris oscuro
+        ),
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
+            .fillMaxWidth(0.65f) // más angosto
+            .height(110.dp),
+        contentPadding = PaddingValues(vertical = 16.dp)
     ) {
-        Row(
-            Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF83C5BE).copy(alpha = 0.35f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Outlined.DirectionsBus, contentDescription = null)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
-            }
+            Icon(
+                imageVector = Icons.Outlined.DirectionsBus,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text,
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }

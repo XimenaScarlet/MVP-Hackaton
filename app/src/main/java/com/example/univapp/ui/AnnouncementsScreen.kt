@@ -1,3 +1,4 @@
+
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.example.univapp.ui
@@ -12,11 +13,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,9 +30,7 @@ import androidx.compose.ui.unit.sp
 
 /* Paleta */
 private val ScreenBg = Color(0xFFF6F8FA)
-private val CardBg   = Color.White
-private val Line     = Color(0xFFE9E6F0)
-private val Muted    = Color(0xFF6B7280)
+private val Muted    = Color(0xFF374151)
 
 /* Modelo */
 private data class Notice(
@@ -40,30 +40,30 @@ private data class Notice(
     val timeAgo: String
 )
 
-/* Avisos universitarios */
+/* Demo */
 private val demoNotices = listOf(
     Notice(
         title = "Entrega de proyectos finales",
         category = "Académico",
-        description = "Recuerda que la entrega de proyectos finales es el 20 de noviembre. Sube tus archivos antes de las 11:59 PM.",
+        description = "La entrega es el 20 de noviembre. Sube tus archivos antes de las 11:59 PM.",
         timeAgo = "2 h"
     ),
     Notice(
-        title = "Evento de bienvenida a nuevos alumnos",
-        category = "Evento universitario",
-        description = "Miércoles 13: 10:00 AM en el auditorio principal. Participa y conoce a tus compañeros.",
+        title = "Evento de bienvenida",
+        category = "Evento",
+        description = "Miércoles 13 • 10:00 AM • Auditorio principal. ¡Te esperamos!",
         timeAgo = "1 día"
     ),
     Notice(
         title = "Pago de reinscripción",
         category = "Pagos",
-        description = "Fecha límite: 12 de noviembre. Puedes pagar en caja o en línea.",
+        description = "Fecha límite: 12 de noviembre. Paga en caja o en línea.",
         timeAgo = "5 días"
     ),
     Notice(
-        title = "Nuevo taller: Introducción a Kotlin",
+        title = "Taller: Introducción a Kotlin",
         category = "Capacitación",
-        description = "Viernes 15: 4:00–6:00 PM en Lab B-204. Inscripciones abiertas en el portal.",
+        description = "Viernes 15 • 4:00–6:00 PM • Lab B-204. Cupo limitado.",
         timeAgo = "1 sem"
     )
 )
@@ -76,7 +76,7 @@ fun AnnouncementsScreen(onBack: (() -> Unit)? = null) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Avisos universitarios", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Avisos universitarios") },
                 navigationIcon = {
                     IconButton(onClick = { onBack?.invoke() ?: backDispatcher?.onBackPressed() }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Atrás")
@@ -86,99 +86,103 @@ fun AnnouncementsScreen(onBack: (() -> Unit)? = null) {
         },
         containerColor = ScreenBg
     ) { pv ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .background(ScreenBg)
                 .padding(pv)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = PaddingValues(top = 14.dp, bottom = 28.dp)
         ) {
-            if (notices.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No tienes avisos universitarios", color = Muted)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(notices, key = { it.hashCode() }) { n ->
-                        NoticeCard(n = n, onDelete = { notices.remove(n) })
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NoticeCard(n: Notice, onDelete: () -> Unit) {
-    // Colores/ícono por categoría
-    val (icon, tint) = when (n.category) {
-        "Académico" -> Icons.Outlined.Notifications to Color(0xFF4CB2F5)
-        "Evento universitario" -> Icons.Outlined.Event to Color(0xFF10B981)
-        "Sistema" -> Icons.Outlined.Campaign to Color(0xFFF59E0B)
-        "Pagos" -> Icons.Outlined.Campaign to Color(0xFF6366F1)
-        "Capacitación" -> Icons.Outlined.Notifications to Color(0xFF8B5CF6)
-        else -> Icons.Outlined.Notifications to Color(0xFF94A3B8)
-    }
-
-    // Misma apariencia para TODOS los avisos (como el primero de tu captura)
-    ElevatedCard(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 96.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icono en pastilla suave
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = .16f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = tint)
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            // Contenido texto
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = n.title,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = Color(0xFF111827)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(n.timeAgo, color = Muted, fontSize = 12.sp)
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = n.description,
-                    color = Muted,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+            items(notices, key = { it.hashCode() }) { n ->
+                NoticeBigCard(
+                    n = n,
+                    onDelete = { notices.remove(n) }
                 )
             }
-
-            // Botón eliminar alineado a la derecha
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = "Eliminar", tint = Color(0xFFEF4444))
-            }
         }
     }
 }
+
+/* ---------- Card grande estilo “Salud” ---------- */
+
+@Composable
+private fun NoticeBigCard(n: Notice, onDelete: () -> Unit) {
+    val (icon, bg, fg, pill) = when (n.category) {
+        "Académico"     -> Quad(Icons.Outlined.Notifications, Color(0xFFB8E1FF), Color(0xFF0E1B4D), "Académico")
+        "Evento"        -> Quad(Icons.Outlined.Event,          Color(0xFFAAF27F), Color(0xFF0B3D17), "Evento")
+        "Pagos"         -> Quad(Icons.Outlined.Campaign,       Color(0xFFD6C4FF), Color(0xFF2D0E4D), "Pagos")
+        "Capacitación"  -> Quad(Icons.Outlined.Notifications,  Color(0xFFFFC0E6), Color(0xFF3D0B2A), "Capacitación")
+        else            -> Quad(Icons.Outlined.Notifications,  Color(0xFFE5E7EB), Color(0xFF111827), n.category)
+    }
+
+    ElevatedCard(
+        onClick = {},
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = bg),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+
+            // Encabezado: icono + título + pill + tiempo
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.65f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = fg)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(n.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(Color.White.copy(alpha = 0.6f))
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                        ) {
+                            Text(pill, fontSize = 12.sp, color = fg)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(n.timeAgo, fontSize = 12.sp, color = fg.copy(alpha = 0.75f))
+                    }
+                }
+                // puntito decorativo + borrar
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.55f))
+                )
+                Spacer(Modifier.width(4.dp))
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Outlined.Campaign, contentDescription = "Eliminar", tint = fg)
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Descripción
+            Text(
+                n.description,
+                fontSize = 14.sp,
+                color = fg.copy(alpha = 0.9f),
+                lineHeight = 19.sp
+            )
+        }
+    }
+}
+
+/* Helper para devolver 4 valores */
+private data class Quad<A,B,C,D>(val a: A, val b: B, val c: C, val d: D)
+private operator fun <A,B,C,D> Quad<A,B,C,D>.component1() = a
+private operator fun <A,B,C,D> Quad<A,B,C,D>.component2() = b
+private operator fun <A,B,C,D> Quad<A,B,C,D>.component3() = c
+private operator fun <A,B,C,D> Quad<A,B,C,D>.component4() = d

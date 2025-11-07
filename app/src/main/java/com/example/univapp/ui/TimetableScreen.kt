@@ -35,64 +35,68 @@ import java.util.Locale
 
 /* --------- Paleta --------- */
 private val ScreenBg = Color(0xFFF6F8FA)
-private val HeaderGreen = Color(0xFF15C46A)
+private val HeaderBlueTrans = Color(0xAA2563EB) // azul más oscuro con transparencia
 private val CardBg = Color.White
 private val Muted = Color(0xFF6B7280)
 
-/* ----------------- Modelo simple ----------------- */
-
+/* ----------------- Modelo ----------------- */
 data class ClassItem(
+    val id: Long,
     val name: String,
-    val type: String = "Clase", // Clase/Laboratorio/Examen
-    val start: String,         // “09:00”
-    val end: String,           // “09:50”
-    val room: String,          // “A-204”
+    val type: String = "Clase",
+    val start: String,
+    val end: String,
+    val room: String,
     val teacher: String = "",
-    val dayOfWeek: Int         // Calendar.SUNDAY..SATURDAY
+    val dayOfWeek: Int
 )
 
-/* Datos mock (materias por cada día) */
+/* --------- Mock ampliado (ajústalo a tu fuente real después) --------- */
 private val mockSchedule = listOf(
-    // DOMINGO (ejemplo vacío)
-    ClassItem("Repaso", "Clase", "11:00", "11:50", "B-101", "—", Calendar.SUNDAY),
+    // Lunes
+    ClassItem(101, "Fundamentos de Programación", "Clase", "07:00", "08:40", "A-203", "Mtra. Sofía Lozano", Calendar.MONDAY),
+    ClassItem(104, "Introducción a Bases de Datos", "Laboratorio", "12:00", "14:00", "Lab-1", "Ing. M. Torres", Calendar.MONDAY),
 
-    // LUNES
-    ClassItem("Matemáticas", "Clase", "09:00", "09:50", "A-101", "Adam Spencer", Calendar.MONDAY),
-    ClassItem("Inglés", "Clase", "10:00", "10:50", "A-103", "Isabella", Calendar.MONDAY),
-    ClassItem("Matemáticas", "Examen", "11:00", "11:50", "A-101", "", Calendar.MONDAY),
-    ClassItem("Ciencias", "Laboratorio", "13:00", "13:50", "A-202", "Katharine Brown", Calendar.MONDAY),
+    // Martes
+    ClassItem(102, "Matemáticas I", "Clase", "09:00", "10:40", "B-104", "Dr. Hugo Pérez", Calendar.TUESDAY),
+    ClassItem(206, "Programación Orientada a Objetos (Kotlin)", "Clase", "11:00", "12:40", "Lab-2", "Mtra. Laura Rivas", Calendar.TUESDAY),
 
-    // MARTES
-    ClassItem("POO", "Clase", "08:00", "08:50", "Lab 3", "Luis Díaz", Calendar.TUESDAY),
-    ClassItem("Bases de Datos", "Clase", "10:00", "10:50", "A-210", "M. Torres", Calendar.TUESDAY),
+    // Miércoles
+    ClassItem(207, "Redes de Computadoras", "Clase", "08:00", "09:40", "B-201", "Ing. C. Pérez", Calendar.WEDNESDAY),
+    ClassItem(208, "Habilidades de Comunicación", "Taller", "12:00", "13:30", "C-002", "Mtro. Daniel Cortés", Calendar.WEDNESDAY),
 
-    // MIÉRCOLES
-    ClassItem("Redes", "Clase", "09:00", "09:50", "B-201", "C. Pérez", Calendar.WEDNESDAY),
-    ClassItem("Inglés", "Clase", "12:00", "12:50", "A-103", "Isabella", Calendar.WEDNESDAY),
+    // Jueves
+    ClassItem(105, "Inglés A1", "Clase", "11:00", "12:40", "D-101", "Lic. P. Ramos", Calendar.THURSDAY),
+    ClassItem(209, "Cálculo Diferencial", "Clase", "08:00", "09:40", "A-204", "Mtra. A. Villarreal", Calendar.THURSDAY),
 
-    // JUEVES
-    ClassItem("Cálculo", "Clase", "08:00", "08:50", "A-204", "M. Torres", Calendar.THURSDAY),
-    ClassItem("Ciencias", "Laboratorio", "13:00", "13:50", "A-202", "Katharine Brown", Calendar.THURSDAY),
+    // Viernes
+    ClassItem(210, "Estructuras de Datos", "Laboratorio", "09:00", "10:40", "Lab-3", "Dr. Luis Ortega", Calendar.FRIDAY),
+    ClassItem(211, "Ingeniería de Software", "Clase", "11:30", "13:10", "A-110", "Mtro. J. Herrera", Calendar.FRIDAY),
 
-    // VIERNES
-    ClassItem("Programación", "Clase", "09:00", "09:50", "Lab 2", "L. Díaz", Calendar.FRIDAY),
-    ClassItem("Tutorías", "Clase", "11:30", "12:20", "A-204", "M. Torres", Calendar.FRIDAY),
-
-    // SÁBADO
-    ClassItem("Proyecto", "Clase", "10:00", "11:30", "A-110", "Equipo", Calendar.SATURDAY)
+    // Sábado
+    ClassItem(212, "Proyecto Integrador", "Seminario", "10:00", "12:00", "Sala Proy-1", "Equipo", Calendar.SATURDAY)
 )
 
 /* ----------------- Pantalla ----------------- */
 @Composable
 fun TimetableScreen(
-    onBack: (() -> Unit)? = null
+    term: Int = 1,
+    onBack: (() -> Unit)? = null,
+    onOpenSubject: (subjectId: Long, term: Int) -> Unit = { _, _ -> }
 ) {
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
-    // Fecha seleccionada (hoy como inicio)
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
 
     val sdfMonthYear = remember { SimpleDateFormat("MMMM yyyy", Locale("es", "MX")) }
+    val monthYear = remember(selectedDate.timeInMillis) { sdfMonthYear.format(selectedDate.time) }
+    val headerTitle = remember(monthYear, selectedDate.timeInMillis) {
+        if (isToday(selectedDate)) "Hoy"
+        else monthYear.replaceFirstChar { ch ->
+            if (ch.isLowerCase()) ch.titlecase(Locale("es", "MX")) else ch.toString()
+        }
+    }
+
     val classesForDay = remember(selectedDate.timeInMillis) {
         mockSchedule.filter { it.dayOfWeek == selectedDate.get(Calendar.DAY_OF_WEEK) }
             .sortedBy { it.start }
@@ -101,7 +105,7 @@ fun TimetableScreen(
     Scaffold(
         topBar = {
             SmallTopAppBar(
-                title = { Text("Horario") },
+                title = { Text("Horario", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                 navigationIcon = {
                     IconButton(onClick = { onBack?.invoke() ?: backDispatcher?.onBackPressed() }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Atrás")
@@ -116,16 +120,14 @@ fun TimetableScreen(
                 .background(ScreenBg)
                 .padding(pv)
         ) {
-            // Header verde en español y con el día seleccionado al centro
             HeaderSemana(
                 selectedDate = selectedDate,
-                title = if (isToday(selectedDate)) "Hoy" else sdfMonthYear.format(selectedDate.time).replaceFirstChar { it.uppercase() },
+                title = headerTitle,
                 onPrev = { selectedDate = (selectedDate.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) } },
                 onNext = { selectedDate = (selectedDate.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 1) } },
                 onPickDate = { selectedDate = it }
             )
 
-            // Lista de clases del día
             if (classesForDay.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No hay clases para este día", color = Muted)
@@ -138,7 +140,10 @@ fun TimetableScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(classesForDay) { cls ->
-                        ClassRowCard(cls)
+                        ClassRowCard(
+                            cls = cls,
+                            onClick = { onOpenSubject(cls.id, term) }
+                        )
                     }
                 }
             }
@@ -160,14 +165,15 @@ private fun HeaderSemana(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(week.first().timeInMillis) {
-        // Mover para que el índice 3 (centro) quede visible
         scope.launch { listState.scrollToItem(0) }
     }
 
-    Surface(color = HeaderGreen, contentColor = Color.White) {
+    Surface(color = HeaderBlueTrans, contentColor = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onPrev, colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)) {
@@ -189,21 +195,25 @@ private fun HeaderSemana(
 
             androidx.compose.foundation.lazy.LazyRow(
                 state = listState,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 items(week.size) { i ->
                     val day = week[i]
-                    val isSelected = i == 3 // el del centro
+                    val isSelected = i == 3 // centro
                     Column(
                         modifier = Modifier
                             .width(48.dp)
-                            .clickable {
-                                onPickDate(day)
-                            },
+                            .clickable { onPickDate(day) },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(dayLabels[day.get(Calendar.DAY_OF_WEEK) - 1].uppercase(), fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
+                        Text(
+                            dayLabels[day.get(Calendar.DAY_OF_WEEK) - 1].uppercase(Locale("es","MX")),
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
                         Spacer(Modifier.height(6.dp))
                         Box(
                             modifier = Modifier
@@ -215,7 +225,7 @@ private fun HeaderSemana(
                             Text(
                                 text = day.get(Calendar.DAY_OF_MONTH).toString(),
                                 fontSize = 12.sp,
-                                color = if (isSelected) HeaderGreen else Color.White
+                                color = if (isSelected) HeaderBlueTrans else Color.White
                             )
                         }
                     }
@@ -225,11 +235,8 @@ private fun HeaderSemana(
     }
 }
 
-private fun buildWeekCentered(center: Calendar): List<Calendar> {
-    return List(7) { i ->
-        (center.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, i - 3) }
-    }
-}
+private fun buildWeekCentered(center: Calendar): List<Calendar> =
+    List(7) { i -> (center.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, i - 3) } }
 
 private fun isToday(c: Calendar): Boolean {
     val now = Calendar.getInstance()
@@ -239,18 +246,20 @@ private fun isToday(c: Calendar): Boolean {
 
 /* ----------------- Fila de clase ----------------- */
 @Composable
-private fun ClassRowCard(cls: ClassItem) {
+private fun ClassRowCard(cls: ClassItem, onClick: () -> Unit) {
     val stripeColor = colorFromName(cls.name)
+    val displayName = remember(cls.name) { abbreviateTitle(cls.name, maxChars = 28) }
 
     Surface(
         color = CardBg,
         shape = RoundedCornerShape(12.dp),
         tonalElevation = 1.dp,
         shadowElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Row(Modifier.fillMaxWidth()) {
-            // Columna de horas a la izquierda
             Column(
                 modifier = Modifier
                     .widthIn(min = 86.dp)
@@ -261,7 +270,6 @@ private fun ClassRowCard(cls: ClassItem) {
                 Text(cls.end, fontSize = 12.sp, color = Muted)
             }
 
-            // Línea vertical de color
             Box(
                 modifier = Modifier
                     .width(2.dp)
@@ -269,14 +277,13 @@ private fun ClassRowCard(cls: ClassItem) {
                     .background(stripeColor)
             )
 
-            // Contenido de la tarjeta
             Column(
                 modifier = Modifier
                     .padding(12.dp)
                     .fillMaxWidth()
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(cls.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Text(displayName, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
                     AssistChip(onClick = {}, label = { Text(cls.type) })
                 }
@@ -284,7 +291,7 @@ private fun ClassRowCard(cls: ClassItem) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Place, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("${cls.room}", color = Muted, fontSize = 12.sp)
+                    Text(cls.room, color = Muted, fontSize = 12.sp)
                     Spacer(Modifier.width(12.dp))
                     if (cls.teacher.isNotBlank()) {
                         Icon(Icons.Outlined.Person, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
@@ -300,8 +307,33 @@ private fun ClassRowCard(cls: ClassItem) {
 /* ----------------- Utils ----------------- */
 private fun colorFromName(name: String): Color {
     val h = name.hashCode()
-    val r = 100 + (h and 0x7F)
-    val g = 100 + ((h shr 8) and 0x7F)
-    val b = 100 + ((h shr 16) and 0x7F)
+    val r = 90 + (h and 0x6F)
+    val g = 110 + ((h shr 8) and 0x5F)
+    val b = 150 + ((h shr 16) and 0x4F) // tiende más a azul
     return Color(r, g, b)
 }
+
+/**
+ * Abrevia títulos largos de forma “natural”.
+ * - Si contiene " de " mantiene "<Primera> de …"
+ * - Si no, recorta por caracteres y agrega "…"
+ */
+private fun abbreviateTitle(title: String, maxChars: Int = 26): String {
+    val clean = title.trim()
+    if (clean.length <= maxChars) return clean
+
+    val words = clean.split(' ')
+    if (words.size >= 3) {
+        val first = words[0]
+        // Mantener la estructura “<Primera> de …” si hay “de”
+        val idxDe = words.indexOfFirst { it.equals("de", ignoreCase = true) }
+        if (idxDe in 1 until words.size) {
+            val prefix = "$first de"
+            val out = "$prefix …"
+            return if (out.length <= maxChars + 3) out else "$first …"
+        }
+    }
+    // fallback: recorte duro
+    return clean.take(maxChars).trimEnd() + "…"
+}
+

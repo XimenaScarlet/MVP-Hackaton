@@ -61,7 +61,7 @@ object Routes {
     const val HEALTH         = "health"
     const val SETTINGS       = "settings"
     const val SUBJECTS       = "subjects"
-    const val SUBJECT_DETAIL = "subject_detail/{id}/{term}" // id:Int, term:Long
+    const val SUBJECT_DETAIL = "subject_detail/{id}/{term}"
     const val ANNOUNCEMENTS  = "announcements"
     const val TIMETABLE      = "timetable"
 
@@ -82,12 +82,10 @@ fun AppNavHost(nav: NavHostController) {
 
     NavHost(navController = nav, startDestination = Routes.LOGIN) {
 
-        /* ---------------- Login ---------------- */
         composable(Routes.LOGIN) {
             LoginScreen(
                 errorText      = errText,
                 onLogin        = { id, pass, _ ->
-                    // Atajo para transportista
                     if (id.equals("transporte", true) && pass.equals("transporte", true)) {
                         val routeId = "Ramos"
                         val busName = Uri.encode("Camión 1")
@@ -124,7 +122,6 @@ fun AppNavHost(nav: NavHostController) {
             }
         }
 
-        /* --------------- Home Alumno --------------- */
         composable(Routes.STUDENT_HOME) {
             val rawName = remember(user) {
                 val dn = user?.displayName?.trim().orEmpty()
@@ -150,7 +147,6 @@ fun AppNavHost(nav: NavHostController) {
             )
         }
 
-        /* --------------- Dashboard Admin --------------- */
         composable(Routes.ADMIN_HOME) {
             AdminDashboard(
                 onLogout = {
@@ -169,20 +165,16 @@ fun AppNavHost(nav: NavHostController) {
                 onOpenHorarios   = { nav.navigate(Routes.ADMIN_HORARIOS) }
             )
         }
-
-        // Secciones admin
         composable(Routes.ADMIN_ALUMNOS)    { AdminAlumnosScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_MATERIAS)   { AdminMateriasScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_GRUPOS)     { AdminGruposScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_PROFESORES) { AdminProfesoresScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_HORARIOS)   { AdminHorariosScreen(onBack = { nav.popBackStack() }) }
 
-        /* --------------- Pantallas Alumno --------------- */
-        composable(Routes.GRADES)   { GradesScreen() }
-        composable(Routes.PROFILE)  { ProfileScreen() }
-        composable(Routes.HEALTH)   { HealthScreen() }
+        composable(Routes.GRADES)  { GradesScreen() }
+        composable(Routes.PROFILE) { ProfileScreen() }
+        composable(Routes.HEALTH)  { HealthScreen() }
 
-        // ⚠️ AQUÍ ESTABA EL FALLO: faltaba onLogout
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { nav.popBackStack() },
@@ -196,32 +188,46 @@ fun AppNavHost(nav: NavHostController) {
             )
         }
 
+        // Lista de materias
         composable(Routes.SUBJECTS) {
             SubjectsScreen(
-                onOpenSubject = { subjectId: Int, term: Long ->
+                onBack = { nav.popBackStack() },
+                onOpenSubject = { term: Int, subjectId: Long ->
                     nav.navigate("subject_detail/$subjectId/$term")
                 }
             )
         }
+
+        // Detalle de materia (tipos correctos)
         composable(
             route = Routes.SUBJECT_DETAIL,
             arguments = listOf(
-                navArgument("id")   { type = NavType.IntType },
-                navArgument("term") { type = NavType.LongType }
+                navArgument("id")   { type = NavType.LongType },
+                navArgument("term") { type = NavType.IntType  }
             )
         ) { back ->
-            val subjectIdInt: Int = back.arguments?.getInt("id") ?: 0
-            val termLong: Long    = back.arguments?.getLong("term") ?: 0L
+            val subjectId: Long = back.arguments?.getLong("id") ?: 0L
+            val term: Int       = back.arguments?.getInt("term") ?: 1
             SubjectDetailScreen(
-                subjectId = subjectIdInt.toLong(),
-                term      = termLong.toInt()
+                subjectId = subjectId,
+                term      = term,
+                onBack    = { nav.popBackStack() }
             )
         }
 
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen() }
-        composable(Routes.TIMETABLE)     { TimetableScreen() }
 
-        /* --------------- Selector de Rutas / Mapas --------------- */
+        // Horario
+        composable(Routes.TIMETABLE) {
+            TimetableScreen(
+                term = 1,
+                onBack = { nav.popBackStack() },
+                onOpenSubject = { subjectId, t ->
+                    nav.navigate("subject_detail/$subjectId/$t")
+                }
+            )
+        }
+
         composable(Routes.SELECTOR) {
             RoutesSelectorScreen(
                 onBack         = { nav.popBackStack() },
@@ -237,7 +243,6 @@ fun AppNavHost(nav: NavHostController) {
             RouteMapScreen(routeId = id, onBack = { nav.popBackStack() })
         }
 
-        /* --------------- Transportista --------------- */
         composable(
             route = Routes.TRANSPORTER_SCAN,
             arguments = listOf(
