@@ -36,7 +36,7 @@ private val DividerColor = Color(0xFFE5E7EB)
 
 @Composable
 fun ProfileScreen(
-    onBack: (() -> Unit)? = null // <- opcional, por si lo usas con NavController
+    onBack: (() -> Unit)? = null
 ) {
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val vm: ProfileViewModel = viewModel()
@@ -52,7 +52,6 @@ fun ProfileScreen(
                 title = { Text("Mi perfil") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Si se pasa onBack, se ejecuta; si no, hace back nativo
                         onBack?.invoke() ?: backDispatcher?.onBackPressed()
                     }) {
                         Icon(
@@ -97,7 +96,14 @@ fun ProfileScreen(
 
                 else -> {
                     val p = perfil!!
-                    val safe = { s: String? -> if (s.isNullOrBlank()) "No aplica" else s }
+
+                    val safe = { s: String? -> if (s.isNullOrBlank()) "No aplica" else s.trim() }
+
+                    // valores fijos
+                    val semestreVal = "9°"
+                    val grupoVal = "IDGSA"
+                    val direccionVal = "Saltillo" // siempre Saltillo
+
                     val qrPayload = "univapp://alumno?id=${p.matricula}&v=1"
 
                     LazyColumn(
@@ -119,14 +125,14 @@ fun ProfileScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SquareStatCard(
                                     title = "Semestre",
-                                    value = safe(p.semestre),
+                                    value = semestreVal,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(96.dp)
                                 )
                                 SquareStatCard(
                                     title = "Grupo",
-                                    value = safe(p.grupoId),
+                                    value = grupoVal,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(96.dp)
@@ -140,7 +146,7 @@ fun ProfileScreen(
                                     "Matrícula" to safe(p.matricula),
                                     "Correo institucional" to safe(p.correo),
                                     "Teléfono" to safe(p.telefono),
-                                    "Dirección" to safe(p.direccion),
+                                    "Dirección" to direccionVal, // siempre Saltillo
                                     "Fecha de nacimiento" to safe(p.fechaNacimiento)
                                 )
                             )
@@ -259,7 +265,11 @@ private fun InfoList(items: List<Pair<String, String>>) {
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp)
+        ) {
             items.forEachIndexed { index, (label, value) ->
                 Row(
                     modifier = Modifier
@@ -286,4 +296,3 @@ private fun InfoList(items: List<Pair<String, String>>) {
         }
     }
 }
-

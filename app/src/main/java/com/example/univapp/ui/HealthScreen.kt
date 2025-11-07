@@ -4,14 +4,10 @@ package com.example.univapp.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.LocalHospital
-import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.PsychologyAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -21,7 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -31,8 +27,7 @@ import androidx.compose.ui.unit.sp
 fun HealthScreen(
     onBack: () -> Unit = {},
     onOpenPsychSupport: () -> Unit = {},
-    onOpenMedicalSupport: () -> Unit = {},
-    onOpenClub: () -> Unit = {}
+    onOpenMedicalSupport: () -> Unit = {}
 ) {
     val items = listOf(
         HealthCardData(
@@ -54,16 +49,6 @@ fun HealthScreen(
             bg = Color(0xFFFF9AD5),
             fg = Color(0xFF3D0B2A),
             onClick = onOpenPsychSupport
-        ),
-        HealthCardData(
-            title = "Club de Programación",
-            line1 = "Reunión: Jueves 5:00 p.m.",
-            line2 = "Laboratorio 3 • Edificio D",
-            pill = "¡Únete!",
-            icon = Icons.Outlined.MonitorHeart,
-            bg = Color(0xFFB8C8FF),
-            fg = Color(0xFF0E1B4D),
-            onClick = onOpenClub
         )
     )
 
@@ -82,17 +67,23 @@ fun HealthScreen(
             )
         }
     ) { pv ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF6F8FA))
-                .padding(pv)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            contentPadding = PaddingValues(top = 14.dp, bottom = 28.dp)
+                .padding(pv),
+            contentAlignment = Alignment.Center // 🔹 centradas verticalmente
         ) {
-            items(items) { data ->
-                HealthBigCard(data)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                items.forEach { data ->
+                    HealthBigCard(data)
+                }
             }
         }
     }
@@ -118,46 +109,58 @@ private fun HealthBigCard(data: HealthCardData) {
         shape = RoundedCornerShape(26.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = data.bg),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 160.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Ícono y título
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color.White.copy(alpha = 0.65f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = data.icon,
-                        contentDescription = null,
-                        tint = data.fg
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = data.title,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = data.fg
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(Color.White.copy(alpha = 0.6f))
-                            .padding(horizontal = 10.dp, vertical = 3.dp)
-                    ) {
-                        Text(data.pill, fontSize = 12.sp, color = data.fg)
-                    }
-                }
+            // Ícono
+            Box(
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color.White.copy(alpha = 0.65f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = data.icon,
+                    contentDescription = null,
+                    tint = data.fg,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Título
+            Text(
+                text = data.title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = data.fg,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Pill
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.6f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    data.pill,
+                    fontSize = 12.sp,
+                    color = data.fg,
+                    textAlign = TextAlign.Center
+                )
             }
 
             Spacer(Modifier.height(14.dp))
@@ -167,13 +170,17 @@ private fun HealthBigCard(data: HealthCardData) {
                 text = data.line1,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                color = data.fg
+                color = data.fg,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = data.line2,
                 fontSize = 14.sp,
-                color = data.fg.copy(alpha = 0.85f)
+                color = data.fg.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }

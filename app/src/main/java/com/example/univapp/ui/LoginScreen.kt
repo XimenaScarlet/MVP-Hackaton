@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -130,14 +132,15 @@ fun LoginScreen(
                     singleLine = true,
                     visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        Text(
-                            if (showPass) "Ocultar" else "Mostrar",
-                            color = teal,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                            fontSize = 12.sp
-                        )
+                        IconButton(
+                            onClick = { showPass = !showPass },
+                        ) {
+                            Icon(
+                                imageVector = if (showPass) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+                                contentDescription = if (showPass) "Ocultar contraseña" else "Mostrar contraseña",
+                                tint = teal
+                            )
+                        }
                     },
                     shape = RoundedCornerShape(24.dp),
                     textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
@@ -167,7 +170,9 @@ fun LoginScreen(
         ) {
             ElevatedCard(
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                modifier = Modifier.padding(16.dp).fillMaxWidth()
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(errorText ?: "", color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.weight(1f))
