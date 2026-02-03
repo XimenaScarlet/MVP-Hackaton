@@ -71,5 +71,4 @@ object Routes {
     
     const val SUBJECT_DETAIL = "subjectDetail/{term}/{subjectId}"
     const val ROUTE_MAP = "routeMap/{id}"
-    const val TRANSPORTER_SCAN = "transporterScan/{routeId}/{busName}/{phone}"
 }
