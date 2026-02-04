@@ -24,7 +24,6 @@ import com.example.univapp.navigation.Routes
 import com.example.univapp.ui.*
 import com.example.univapp.ui.admin.*
 import com.example.univapp.ui.routesel.RoutesSelectorScreen
-import com.example.univapp.transporter.TransporterScanScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -452,15 +451,6 @@ fun AppNavHost(
         ) { back ->
             val id = back.arguments?.getString("id") ?: "R5"
             RouteMapScreen(routeId = id, onBack = { nav.popBackStack() })
-        }
-        composable(
-            route = Routes.TRANSPORTER_SCAN,
-            arguments = listOf(navArgument("routeId") { type = NavType.StringType }, navArgument("busName") { type = NavType.StringType }, navArgument("phone") { type = NavType.StringType })
-        ) { back ->
-            val r = back.arguments?.getString("routeId") ?: "Ramos"
-            val b = back.arguments?.getString("busName") ?: "Camión 1"
-            val p = back.arguments?.getString("phone") ?: "5218440000000"
-            TransporterScanScreen(routeId = r, busName = b, notifyPhoneNumber = p, onBack = { nav.navigate(Routes.LOGIN) { popUpTo(0) } })
         }
     }
 }
