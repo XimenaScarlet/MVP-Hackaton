@@ -34,39 +34,40 @@ class SOSViewModel(private val locationHelper: LocationHelper) : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // 1. Obtener identificador (Matrícula o Email)
                 val user = auth.currentUser
-                val email = user?.email ?: offlineSession?.email ?: ""
+                val email = (user?.email ?: offlineSession?.email ?: "").lowercase().trim()
                 val matricula = email.substringBefore("@")
                 val uid = user?.uid ?: offlineSession?.userId ?: matricula
 
-                // 2. BUSCAR DATOS REALES DEL ALUMNO EN LA COLECCIÓN "alumnos"
-                var nombreAlumno = "Alumno Desconocido"
-                var carreraAlumno = ""
-                
-                try {
-                    val doc = db.collection("alumnos").document(matricula).get().await()
-                    if (doc.exists()) {
-                        nombreAlumno = doc.getString("nombre") ?: nombreAlumno
-                        carreraAlumno = doc.getString("carrera") ?: ""
+                var nombreAlumno = "Alumno"
+                var matriculaReal = matricula
+
+                // 1. Obtener datos del alumno
+                if (matricula.isNotEmpty()) {
+                    try {
+                        val doc = db.collection("alumnos").document(matricula).get().await()
+                        if (doc.exists()) {
+                            nombreAlumno = doc.getString("nombre") ?: nombreAlumno
+                            matriculaReal = doc.getString("matricula") ?: matricula
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SOS_DEBUG", "Error buscando datos", e)
                     }
-                } catch (e: Exception) {
-                    Log.e("SOS_DEBUG", "Error buscando datos del alumno", e)
                 }
 
-                // 3. CREAR ALERTA CON DATOS COMPLETOS
+                // 2. Crear registro inicial
                 val initialData = hashMapOf(
                     "alumnoId" to uid,
-                    "matricula" to matricula,
+                    "matricula" to matriculaReal,
                     "nombre" to nombreAlumno,
-                    "carrera" to carreraAlumno,
+                    "email" to email,
                     "active" to true,
+                    "status" to "active",
                     "timestamp" to FieldValue.serverTimestamp()
                 )
-                
                 db.collection("sos_alerts").document(uid).set(initialData, SetOptions.merge())
 
-                // 4. LOOP DE UBICACIÓN
+                // 3. Loop de ubicación forzada
                 trackingJob = launch {
                     while (_isTracking.value) {
                         val latLng = locationHelper.getCurrentLocation()
@@ -75,23 +76,28 @@ class SOSViewModel(private val locationHelper: LocationHelper) : ViewModel() {
                                 "location" to GeoPoint(latLng.latitude, latLng.longitude),
                                 "timestamp" to FieldValue.serverTimestamp()
                             )
-                            db.collection("sos_alerts").document(uid).set(locData, SetOptions.merge())
+                            db.collection("sos_alerts").document(uid).update(locData)
+                                .addOnSuccessListener { Log.d("SOS_DEBUG", "Ubicación enviada OK") }
+                        } else {
+                            Log.w("SOS_DEBUG", "GPS no devolvió ubicación aún")
                         }
-                        delay(5000)
+                        delay(4000) // Actualizar cada 4 segundos
                     }
                 }
             } catch (e: Exception) {
-                Log.e("SOS_DEBUG", "Fallo general en SOS", e)
+                Log.e("SOS_DEBUG", "Error en startTracking", e)
             }
         }
     }
 
     fun stopTracking() {
-        val uid = auth.currentUser?.uid ?: offlineSession?.userId ?: return
         _isTracking.value = false
         trackingJob?.cancel()
         trackingJob = null
-        db.collection("sos_alerts").document(uid).update("active", false)
+        val uid = auth.currentUser?.uid ?: offlineSession?.userId ?: ""
+        if (uid.isNotEmpty()) {
+            db.collection("sos_alerts").document(uid).update("active", false, "status", "ended")
+        }
     }
 
     override fun onCleared() {

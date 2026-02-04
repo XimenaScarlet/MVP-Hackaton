@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -36,6 +37,8 @@ fun AdminSosMapScreen(
     LaunchedEffect(Unit) {
         viewModel.startListening()
     }
+
+    val activeSelectedAlert = alerts.find { it.alumnoId == selectedAlert?.alumnoId } ?: selectedAlert
 
     Scaffold(
         topBar = {
@@ -86,8 +89,7 @@ fun AdminSosMapScreen(
         }
     }
 
-    // MAP POPUP
-    selectedAlert?.let { alert ->
+    activeSelectedAlert?.let { alert ->
         SosMapDialog(alert) { selectedAlert = null }
     }
 }
@@ -108,7 +110,16 @@ fun SosAlertCard(alert: SosAlert, onShowMap: () -> Unit) {
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(alert.email.ifEmpty { "ID: ${alert.alumnoId}" }, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    text = alert.nombre.ifEmpty { alert.email.ifEmpty { "Alumno" } }, 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "Matrícula: ${alert.matricula.ifEmpty { alert.alumnoId }}", 
+                    fontSize = 12.sp, 
+                    color = Color.Gray
+                )
                 Text("Estado: URGENTE", color = Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Button(
@@ -126,9 +137,24 @@ fun SosAlertCard(alert: SosAlert, onShowMap: () -> Unit) {
 
 @Composable
 fun SosMapDialog(alert: SosAlert, onDismiss: () -> Unit) {
-    val position = LatLng(alert.location?.latitude ?: 0.0, alert.location?.longitude ?: 0.0)
+    val hasLocation = alert.location != null && alert.location.latitude != 0.0
+    val position = if (hasLocation) {
+        LatLng(alert.location!!.latitude, alert.location!!.longitude)
+    } else {
+        LatLng(25.4428, -100.9500) // SALTILLO CENTRO por defecto
+    }
+    
     val cameraPositionState = rememberCameraPositionState {
-        this.position = CameraPosition.fromLatLngZoom(position, 17f)
+        this.position = CameraPosition.fromLatLngZoom(position, 16f)
+    }
+
+    LaunchedEffect(position) {
+        if (hasLocation) {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLng(position),
+                durationMs = 1500
+            )
+        }
     }
 
     Dialog(
@@ -145,28 +171,72 @@ fun SosMapDialog(alert: SosAlert, onDismiss: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Warning, null, tint = Color.White)
                         Spacer(Modifier.width(12.dp))
-                        Text("UBICACIÓN EN TIEMPO REAL", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("LOCALIZACIÓN EN VIVO", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                     TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterEnd)) {
                         Text("CERRAR", color = Color.White)
                     }
                 }
                 
-                GoogleMap(
-                    modifier = Modifier.weight(1f),
-                    cameraPositionState = cameraPositionState
-                ) {
-                    Marker(state = MarkerState(position = position), title = alert.email.ifEmpty { alert.alumnoId })
+                Box(Modifier.weight(1f)) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        uiSettings = MapUiSettings(zoomControlsEnabled = true, compassEnabled = true),
+                        properties = MapProperties(isMyLocationEnabled = false)
+                    ) {
+                        if (hasLocation) {
+                            Marker(
+                                state = MarkerState(position = position), 
+                                title = alert.nombre.ifEmpty { alert.matricula },
+                                snippet = "Ubicación actual del alumno"
+                            )
+                        }
+                    }
+
+                    if (!hasLocation) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(8.dp)
+                            ) {
+                                Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(color = Color(0xFFEF4444))
+                                    Spacer(Modifier.height(12.dp))
+                                    Text("Buscando señal GPS...", fontWeight = FontWeight.Bold)
+                                    Text("Aún no hay coordenadas válidas", fontSize = 12.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+                    }
                 }
                 
-                Box(Modifier.fillMaxWidth().padding(20.dp)) {
-                    Text(
-                        "Atención: El alumno (${alert.email}) requiere asistencia inmediata en esta ubicación.",
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        fontWeight = FontWeight.Medium
-                    )
+                Box(Modifier.fillMaxWidth().padding(20.dp).background(Color(0xFFF8FAFC))) {
+                    Column {
+                        Text(
+                            text = alert.nombre.ifEmpty { "Alumno: ${alert.matricula}" },
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
+                            color = Color(0xFF1E293B)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = if (hasLocation) "Lat: ${alert.location?.latitude} | Lon: ${alert.location?.longitude}" 
+                                   else "Esperando coordenadas GPS...",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "⚠️ El alumno solicita asistencia inmediata. Mantén esta pantalla abierta para seguir su movimiento.",
+                            fontSize = 13.sp,
+                            color = Color(0xFFEF4444),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }

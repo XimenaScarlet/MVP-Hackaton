@@ -9,7 +9,9 @@ import com.google.firebase.firestore.ListenerRegistration
 
 data class SosAlert(
     val alumnoId: String = "",
+    val nombre: String = "",
     val email: String = "",
+    val matricula: String = "",
     val location: GeoPoint? = null,
     val active: Boolean = false,
     val status: String = ""
@@ -30,7 +32,19 @@ class AdminSosViewModel : ViewModel() {
                 if (error != null) return@addSnapshotListener
                 
                 val alertList = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(SosAlert::class.java)
+                    try {
+                        SosAlert(
+                            alumnoId = doc.getString("alumnoId") ?: "",
+                            nombre = doc.getString("nombre") ?: "",
+                            email = doc.getString("email") ?: "",
+                            matricula = doc.getString("matricula") ?: "",
+                            location = doc.getGeoPoint("location"),
+                            active = doc.getBoolean("active") ?: false,
+                            status = doc.getString("status") ?: ""
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
                 } ?: emptyList()
                 
                 _alerts.value = alertList
