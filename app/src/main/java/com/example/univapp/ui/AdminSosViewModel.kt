@@ -9,6 +9,7 @@ import com.google.firebase.firestore.ListenerRegistration
 
 data class SosAlert(
     val alumnoId: String = "",
+    val email: String = "",
     val location: GeoPoint? = null,
     val active: Boolean = false,
     val status: String = ""

@@ -48,6 +48,12 @@ fun AppNavHost(
             return SOSViewModel(locationHelper) as T
         }
     })
+    
+    // SINCRONIZAR SESIÓN CON SOS
+    LaunchedEffect(user, offlineSession) {
+        sosViewModel.setOfflineSession(offlineSession)
+    }
+
     val adminSosViewModel: AdminSosViewModel = viewModel()
     val proceduresVM: StudentProceduresViewModel = viewModel()
     val healthVM: HealthViewModel = viewModel()

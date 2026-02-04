@@ -1,5 +1,6 @@
 package com.example.univapp.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.Session
@@ -8,11 +9,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class SOSViewModel(private val locationHelper: LocationHelper) : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
@@ -22,43 +25,63 @@ class SOSViewModel(private val locationHelper: LocationHelper) : ViewModel() {
     private val _isTracking = MutableStateFlow(false)
     val isTracking = _isTracking.asStateFlow()
 
-    // Para manejar sesiones offline si es necesario
     private var offlineSession: Session? = null
     fun setOfflineSession(session: Session?) { this.offlineSession = session }
 
     fun startTracking() {
-        // 1. Obtener ID y Email (Online u Offline)
-        // Usamos userId de Session según la definición en SessionManager.kt
-        val uid = auth.currentUser?.uid ?: offlineSession?.userId ?: return
-        val email = auth.currentUser?.email ?: offlineSession?.email ?: "Usuario Desconocido"
-
         if (trackingJob != null) return
         _isTracking.value = true
 
-        // 2. Crear documento inicial (aunque no haya ubicación aún)
         viewModelScope.launch {
-            val initialData = hashMapOf(
-                "alumnoId" to uid,
-                "email" to email,
-                "active" to true,
-                "status" to "active",
-                "timestamp" to FieldValue.serverTimestamp()
-            )
-            db.collection("sos_alerts").document(uid).set(initialData)
-        }
+            try {
+                // 1. Obtener identificador (Matrícula o Email)
+                val user = auth.currentUser
+                val email = user?.email ?: offlineSession?.email ?: ""
+                val matricula = email.substringBefore("@")
+                val uid = user?.uid ?: offlineSession?.userId ?: matricula
 
-        // 3. Loop de rastreo
-        trackingJob = viewModelScope.launch {
-            while (_isTracking.value) {
-                val latLng = locationHelper.getCurrentLocation()
-                if (latLng != null) {
-                    val updateData = mapOf(
-                        "location" to GeoPoint(latLng.latitude, latLng.longitude),
-                        "timestamp" to FieldValue.serverTimestamp()
-                    )
-                    db.collection("sos_alerts").document(uid).update(updateData)
+                // 2. BUSCAR DATOS REALES DEL ALUMNO EN LA COLECCIÓN "alumnos"
+                var nombreAlumno = "Alumno Desconocido"
+                var carreraAlumno = ""
+                
+                try {
+                    val doc = db.collection("alumnos").document(matricula).get().await()
+                    if (doc.exists()) {
+                        nombreAlumno = doc.getString("nombre") ?: nombreAlumno
+                        carreraAlumno = doc.getString("carrera") ?: ""
+                    }
+                } catch (e: Exception) {
+                    Log.e("SOS_DEBUG", "Error buscando datos del alumno", e)
                 }
-                delay(5000)
+
+                // 3. CREAR ALERTA CON DATOS COMPLETOS
+                val initialData = hashMapOf(
+                    "alumnoId" to uid,
+                    "matricula" to matricula,
+                    "nombre" to nombreAlumno,
+                    "carrera" to carreraAlumno,
+                    "active" to true,
+                    "timestamp" to FieldValue.serverTimestamp()
+                )
+                
+                db.collection("sos_alerts").document(uid).set(initialData, SetOptions.merge())
+
+                // 4. LOOP DE UBICACIÓN
+                trackingJob = launch {
+                    while (_isTracking.value) {
+                        val latLng = locationHelper.getCurrentLocation()
+                        if (latLng != null) {
+                            val locData = mapOf(
+                                "location" to GeoPoint(latLng.latitude, latLng.longitude),
+                                "timestamp" to FieldValue.serverTimestamp()
+                            )
+                            db.collection("sos_alerts").document(uid).set(locData, SetOptions.merge())
+                        }
+                        delay(5000)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SOS_DEBUG", "Fallo general en SOS", e)
             }
         }
     }
@@ -68,13 +91,7 @@ class SOSViewModel(private val locationHelper: LocationHelper) : ViewModel() {
         _isTracking.value = false
         trackingJob?.cancel()
         trackingJob = null
-        
-        val endData = mapOf(
-            "active" to false,
-            "status" to "ended",
-            "timestamp" to FieldValue.serverTimestamp()
-        )
-        db.collection("sos_alerts").document(uid).update(endData)
+        db.collection("sos_alerts").document(uid).update("active", false)
     }
 
     override fun onCleared() {

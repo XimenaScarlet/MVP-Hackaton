@@ -108,7 +108,7 @@ fun SosAlertCard(alert: SosAlert, onShowMap: () -> Unit) {
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text("Alumno: ${alert.alumnoId}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(alert.email.ifEmpty { "ID: ${alert.alumnoId}" }, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text("Estado: URGENTE", color = Color(0xFFEF4444), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Button(
@@ -156,15 +156,16 @@ fun SosMapDialog(alert: SosAlert, onDismiss: () -> Unit) {
                     modifier = Modifier.weight(1f),
                     cameraPositionState = cameraPositionState
                 ) {
-                    Marker(state = MarkerState(position = position), title = alert.alumnoId)
+                    Marker(state = MarkerState(position = position), title = alert.email.ifEmpty { alert.alumnoId })
                 }
                 
                 Box(Modifier.fillMaxWidth().padding(20.dp)) {
                     Text(
-                        "Atención: El alumno requiere asistencia inmediata en esta ubicación.",
+                        "Atención: El alumno (${alert.email}) requiere asistencia inmediata en esta ubicación.",
                         fontSize = 14.sp,
-                        color = Color.Gray,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        color = Color.Black,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
