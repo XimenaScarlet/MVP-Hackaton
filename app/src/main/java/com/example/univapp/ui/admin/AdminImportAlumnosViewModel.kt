@@ -34,7 +34,6 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
             try {
                 val result = withContext(Dispatchers.IO) {
                     val context = getApplication<Application>().applicationContext
-                    // BUG FIX: Declare tempFile outside try to access it in finally
                     val tempFile = File(context.cacheDir, "import_alumnos_fast.xlsx")
                     
                     try {
@@ -48,13 +47,24 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                             throw Exception("No se pudo crear el archivo temporal o está vacío.")
                         }
 
-                        Log.d("ImportExcel", "Archivo copiado a cache: ${tempFile.absolutePath}")
-
-                        // REEMPLAZO DE POIJI POR FASTEXCEL-READER
                         val alumnos = leerAlumnosDesdeExcel(tempFile)
 
                         if (alumnos.isEmpty()) {
                             throw Exception("No se encontraron filas de datos legibles.")
+                        }
+
+                        // VERIFICACIÓN DE DUPLICADOS
+                        val matriculasEnExcel = alumnos.mapNotNull { it.matricula }.filter { it.isNotBlank() }
+                        if (matriculasEnExcel.isNotEmpty()) {
+                            val existingAlumnos = Firebase.firestore.collection("alumnos")
+                                .whereIn("matricula", matriculasEnExcel)
+                                .get()
+                                .await()
+                            
+                            if (!existingAlumnos.isEmpty) {
+                                val existingMatricula = existingAlumnos.documents.first().getString("matricula")
+                                throw Exception("Error: La matrícula '$existingMatricula' ya existe en la base de datos.")
+                            }
                         }
 
                         val validAlumnos = mutableListOf<Alumno>()
@@ -64,9 +74,8 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                             val rowNum = index + 2 
                             val matricula = alumno.matricula?.trim() ?: ""
                             
-                            if (matricula.isEmpty() || matricula.equals("Matricula", true) || matricula.equals("Matrícula", true)) return@forEachIndexed
+                            if (matricula.isEmpty()) return@forEachIndexed
 
-                            // Sanitizar ID para Firestore (alfanumérico y guiones)
                             val safeDocId = matricula.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
 
                             when {
@@ -75,16 +84,12 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                                 alumno.correo.isNullOrBlank() || !Patterns.EMAIL_ADDRESS.matcher(alumno.correo!!).matches() -> 
                                     errors.add("Fila $rowNum: Correo inválido.")
                                 else -> {
-                                    validAlumnos.add(alumno.copy(
-                                        id = safeDocId,
-                                        matricula = matricula // Conservar matrícula original
-                                    ))
+                                    validAlumnos.add(alumno.copy(id = safeDocId, matricula = matricula))
                                 }
                             }
                         }
 
                         if (validAlumnos.isEmpty()) {
-                            // BUG FIX: cleaner error message without brackets
                             throw Exception("No se encontraron registros válidos para importar.\n${errors.firstOrNull() ?: ""}")
                         }
 
@@ -121,12 +126,10 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
     private fun leerAlumnosDesdeExcel(file: File): List<Alumno> {
         FileInputStream(file).use { fis ->
             val wb = ReadableWorkbook(fis)
-            // BUG FIX: Handle null sheet
             val sheet = wb.firstSheet ?: return emptyList()
             val alumnos = mutableListOf<Alumno>()
 
             sheet.openStream().use { rows ->
-                // Usar asSequence() para poder usar drop(1) de Kotlin sobre un Stream de Java
                 rows.asSequence().drop(1).forEach { row -> 
                     val matricula = row.getCellText(0)?.trim()
                     val nombre = row.getCellText(1)?.trim()
@@ -134,18 +137,9 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                     val carreraId = row.getCellText(3)?.trim()
                     val grupoId = row.getCellText(4)?.trim()
 
-                    // Ignorar filas vacías
                     if (matricula.isNullOrBlank() && nombre.isNullOrBlank() && correo.isNullOrBlank()) return@forEach
 
-                    alumnos.add(
-                        Alumno(
-                            matricula = matricula,
-                            nombre = nombre,
-                            correo = correo,
-                            carreraId = carreraId,
-                            grupoId = grupoId
-                        )
-                    )
+                    alumnos.add(Alumno(matricula = matricula, nombre = nombre, correo = correo, carreraId = carreraId, grupoId = grupoId))
                 }
             }
             return alumnos

@@ -98,70 +98,73 @@ fun AdminAlumnosScreen(
             }
         }
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        // Box con fillMaxSize asegura que el área de contenido ocupe todo el espacio
+        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (!isCarreraSelected) {
-                // Selector de Tipo (TSU / ING)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .background(Color(0xFFF1F3F4), RoundedCornerShape(8.dp))
-                        .padding(4.dp)
-                ) {
-                    val types = listOf("TSU", "ING")
-                    types.forEach { type ->
-                        val isSelected = selectedType == type
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp)
-                                .background(
-                                    if (isSelected) Color.White else Color.Transparent,
-                                    RoundedCornerShape(6.dp)
+                Column {
+                    // Selector de Tipo (TSU / ING)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .background(Color(0xFFF1F3F4), RoundedCornerShape(8.dp))
+                            .padding(4.dp)
+                    ) {
+                        val types = listOf("TSU", "ING")
+                        types.forEach { type ->
+                            val isSelected = selectedType == type
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
+                                    .background(
+                                        if (isSelected) Color.White else Color.Transparent,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable { selectedType = type },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = type,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) Color.Black else Color.Gray
                                 )
-                                .clickable { selectedType = type },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = type,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.Black else Color.Gray
-                            )
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "SELECCIONA UNA CARRERA",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF98A2B3),
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "SELECCIONA UNA CARRERA",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF98A2B3),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                if (uiState.isLoadingCarreras) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF007BFF))
-                    }
-                } else {
-                    val filteredCarreras = uiState.carreras.filter { it.tipo.contains(selectedType, ignoreCase = true) }
-                    
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(filteredCarreras) { carrera ->
-                            CarreraGridItemAlumnos(carrera = carrera, onClick = { vm.onCarreraSelected(carrera) })
+                    if (uiState.isLoadingCarreras) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Color(0xFF007BFF))
+                        }
+                    } else {
+                        val filteredCarreras = uiState.carreras.filter { it.tipo.contains(selectedType, ignoreCase = true) }
+                        
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(filteredCarreras) { carrera ->
+                                CarreraGridItemAlumnos(carrera = carrera, onClick = { vm.onCarreraSelected(carrera) })
+                            }
                         }
                     }
                 }
             } else if (!isGrupoSelected) {
-                // Vista de Grupos de la Carrera Seleccionada (AGRUPADOS POR CUATRIMESTRE)
+                // Vista de Grupos - Asegurando que LazyColumn llene el espacio para permitir scroll
                 val groupedGrupos = uiState.grupos.groupBy { grupo ->
                     val name = grupo.nombre ?: ""
                     val cuatriNum = name.takeWhile { it.isDigit() }
@@ -258,7 +261,7 @@ fun AdminAlumnosScreen(
                     }
                 }
             } else {
-                // Vista de Lista de Alumnos (SEGÚN LA IMAGEN ADJUNTA)
+                // Vista de Lista de Alumnos - Scroll activo por LazyColumn
                 Column(Modifier.fillMaxSize()) {
                     Text(
                         text = uiState.selectedGrupo?.nombre ?: "",
@@ -280,7 +283,8 @@ fun AdminAlumnosScreen(
                     } else {
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxSize() // Asegurar que ocupa todo el espacio
                         ) {
                             items(uiState.alumnos, key = { it.id }) { alumno ->
                                 AlumnoListItemStyled(alumno = alumno, onClick = { onEdit(alumno.id) })
