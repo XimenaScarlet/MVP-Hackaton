@@ -145,7 +145,7 @@ fun AppNavHost(
         composable(Routes.ADMIN_ALUMNOS) {
             AdminAlumnosScreen(
                 onBack = { nav.popBackStack() },
-                onEdit = { id -> nav.navigate("admin_edit_alumno/$id") },
+                onEdit = { id -> nav.navigate(Routes.ADMIN_EDIT_ALUMNO.replace("{alumnoId}", id)) },
                 onAddManually = { nav.navigate(Routes.ADMIN_ADD_ALUMNO) },
                 onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_ALUMNOS) }
             )
@@ -155,11 +155,11 @@ fun AppNavHost(
             val uiState by vm.uiState.collectAsState()
             AdminMateriasScreen(
                 onBack = { nav.popBackStack() },
-                onOpenMateria = { id -> nav.navigate("admin_materia_detail/$id") },
+                onOpenMateria = { id -> nav.navigate(Routes.ADMIN_MATERIA_DETAIL.replace("{materiaId}", id)) },
                 onAddManually = {
                     val c = uiState.selectedCarrera?.id ?: return@AdminMateriasScreen
                     val g = uiState.selectedGrupo?.id ?: return@AdminMateriasScreen
-                    nav.navigate("admin_add_materia/$c/$g")
+                    nav.navigate(Routes.ADMIN_ADD_MATERIA.replace("{carreraId}", c).replace("{grupoId}", g))
                 },
                 onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_MATERIAS) },
                 vm = vm
@@ -169,10 +169,10 @@ fun AppNavHost(
             val uiState by adminGruposViewModel.uiState.collectAsState()
             AdminGruposScreen(
                 onBack = { nav.popBackStack() },
-                onGroupClick = { id -> nav.navigate("admin_group_detail/$id") },
+                onGroupClick = { id -> nav.navigate(Routes.ADMIN_GROUP_DETAIL.replace("{groupId}", id)) },
                 onAddManually = {
                     val c = uiState.selectedCarrera?.id ?: return@AdminGruposScreen
-                    nav.navigate("admin_add_group_details/$c")
+                    nav.navigate(Routes.ADMIN_ADD_GROUP_DETAILS.replace("{carreraId}", c))
                 },
                 onImportExcel = { },
                 uiState = uiState,
@@ -186,7 +186,7 @@ fun AppNavHost(
                 onBack = { nav.popBackStack() },
                 onAddManually = {
                     val c = uiState.selectedCarrera?.id ?: return@AdminProfesoresScreen
-                    nav.navigate("admin_add_profesor/$c")
+                    nav.navigate(Routes.ADMIN_ADD_PROFESOR.replace("{carreraId}", c))
                 },
                 onImportExcel = { },
                 vm = vm
@@ -200,7 +200,7 @@ fun AppNavHost(
                 onAddManually = {
                     val c = uiState.selectedCarrera?.id ?: return@AdminHorariosScreen
                     val g = uiState.selectedGrupo?.id ?: return@AdminHorariosScreen
-                    nav.navigate("admin_add_horario/$c/$g")
+                    nav.navigate(Routes.ADMIN_ADD_HORARIO.replace("{carreraId}", c).replace("{grupoId}", g))
                 },
                 onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_HORARIOS) },
                 vm = vm
@@ -211,12 +211,110 @@ fun AppNavHost(
         composable(Routes.ADMIN_ADD_ALUMNO) { AdminAddAlumnoScreen(onBack = { nav.popBackStack() }) }
 
         composable(
+            route = Routes.ADMIN_EDIT_ALUMNO,
+            arguments = listOf(navArgument("alumnoId") { type = NavType.StringType })
+        ) { back ->
+            val id = back.arguments?.getString("alumnoId") ?: ""
+            AdminEditAlumnoScreen(alumnoId = id, onBack = { nav.popBackStack() })
+        }
+
+        composable(
+            route = Routes.ADMIN_MATERIA_DETAIL,
+            arguments = listOf(navArgument("materiaId") { type = NavType.StringType })
+        ) { back ->
+            val id = back.arguments?.getString("materiaId") ?: ""
+            AdminMateriaDetailScreen(
+                materiaId = id,
+                onBack = { nav.popBackStack() },
+                onEditMateria = { mid -> nav.navigate(Routes.ADMIN_EDIT_MATERIA.replace("{materiaId}", mid)) }
+            )
+        }
+
+        composable(
+            route = Routes.ADMIN_ADD_MATERIA,
+            arguments = listOf(
+                navArgument("carreraId") { type = NavType.StringType },
+                navArgument("grupoId") { type = NavType.StringType }
+            )
+        ) { back ->
+            val c = back.arguments?.getString("carreraId") ?: ""
+            val g = back.arguments?.getString("grupoId") ?: ""
+            AddMateriaScreen(carreraId = c, grupoId = g, onBack = { nav.popBackStack() })
+        }
+
+        composable(
+            route = Routes.ADMIN_GROUP_DETAIL,
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { back ->
+            val id = back.arguments?.getString("groupId") ?: ""
+            AdminGroupDetailScreen(groupId = id, onBack = { nav.popBackStack() })
+        }
+
+        composable(
+            route = Routes.ADMIN_ADD_GROUP_DETAILS,
+            arguments = listOf(navArgument("carreraId") { type = NavType.StringType })
+        ) { back ->
+            val c = back.arguments?.getString("carreraId") ?: ""
+            AddGroupDetailsScreen(
+                onBack = { nav.popBackStack() },
+                onNext = { gName, pType, tId ->
+                    nav.navigate(
+                        Routes.ADMIN_ASSIGN_STUDENTS
+                            .replace("{groupName}", gName)
+                            .replace("{programType}", pType)
+                            .replace("{tutorId}", tId)
+                            .replace("{carreraId}", c)
+                    )
+                }
+            )
+        }
+
+        composable(
+            route = Routes.ADMIN_ASSIGN_STUDENTS,
+            arguments = listOf(
+                navArgument("groupName") { type = NavType.StringType },
+                navArgument("programType") { type = NavType.StringType },
+                navArgument("tutorId") { type = NavType.StringType },
+                navArgument("carreraId") { type = NavType.StringType }
+            )
+        ) { back ->
+            val gName = back.arguments?.getString("groupName") ?: ""
+            val pType = back.arguments?.getString("programType") ?: ""
+            val tId = back.arguments?.getString("tutorId") ?: ""
+            val cId = back.arguments?.getString("carreraId") ?: ""
+            AssignStudentsScreen(
+                onBack = { nav.popBackStack() },
+                onSaveGroup = { studentIds ->
+                    adminGruposViewModel.createGroup(gName, tId, studentIds, cId)
+                    nav.navigate(Routes.ADMIN_GRUPOS) {
+                        popUpTo(Routes.ADMIN_GRUPOS) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Routes.ADMIN_ADD_HORARIO,
+            arguments = listOf(
+                navArgument("carreraId") { type = NavType.StringType },
+                navArgument("grupoId") { type = NavType.StringType }
+            )
+        ) { back ->
+            val c = back.arguments?.getString("carreraId") ?: ""
+            val g = back.arguments?.getString("grupoId") ?: ""
+            AddHorarioScreen(carreraId = c, grupoId = g, onBack = { nav.popBackStack() })
+        }
+
+        composable(
             route = Routes.ADMIN_ADD_PROFESOR,
             arguments = listOf(navArgument("carreraId") { type = NavType.StringType })
         ) { back ->
             val carreraId = back.arguments?.getString("carreraId") ?: return@composable
             AddProfesorScreen(carreraId = carreraId, onBack = { nav.popBackStack() })
         }
+
+        composable(Routes.ADMIN_IMPORT_MATERIAS) { ImportMateriasScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.ADMIN_IMPORT_HORARIOS) { /* TODO: Implement ImportHorariosScreen */ }
 
         /* ------------ Alumno ------------ */
         composable(Routes.PROFILE) { ProfileScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
@@ -317,7 +415,7 @@ fun AppNavHost(
                 onOpenMedicalSupport = { 
                     medicalVm.service.value = "Médico General"
                     medicalVm.location.value = "Consultorio A-102"
-                    nav.navigate("medicalSupport") 
+                    nav.navigate(Routes.MEDICAL_SUPPORT) 
                 },
                 onOpenPsychSupport = { 
                     medicalVm.service.value = "Psicología"
@@ -325,7 +423,7 @@ fun AppNavHost(
                     nav.navigate(Routes.PSYCHOLOGIST_DETAIL) 
                 },
                 onTriggerSOS = { nav.navigate(Routes.SOS_ACTIVE) },
-                onViewAppointments = { nav.navigate("my_appointments") },
+                onViewAppointments = { nav.navigate(Routes.MY_APPOINTMENTS) },
                 settingsVm = settingsVM,
                 medicalVm = medicalVm
             )
@@ -351,7 +449,7 @@ fun AppNavHost(
                 onBookAppointment = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) }
             )
         }
-        composable("medicalSupport") {
+        composable(Routes.MEDICAL_SUPPORT) {
             MedicalSupportScreen(onBack = { nav.popBackStack() }, onBook = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) })
         }
         composable(Routes.MEDICAL_APPOINTMENT_FORM) {
@@ -387,7 +485,7 @@ fun AppNavHost(
             )
         }
         
-        composable("my_appointments") {
+        composable(Routes.MY_APPOINTMENTS) {
             MyAppointmentsScreen(
                 onBack = { nav.popBackStack() },
                 medicalVm = medicalVm,

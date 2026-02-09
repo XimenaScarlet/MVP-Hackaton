@@ -3,15 +3,22 @@ package com.example.univapp.ui
 import androidx.lifecycle.ViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.ServerTimestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.google.firebase.firestore.ListenerRegistration
+import java.util.Date
 
+@IgnoreExtraProperties
 data class SosAlert(
     val alumnoId: String = "",
+    val alumnoNombre: String = "",
+    val email: String = "",
     val location: GeoPoint? = null,
     val active: Boolean = false,
-    val status: String = ""
+    val status: String = "",
+    @ServerTimestamp val timestamp: Date? = null
 )
 
 class AdminSosViewModel : ViewModel() {

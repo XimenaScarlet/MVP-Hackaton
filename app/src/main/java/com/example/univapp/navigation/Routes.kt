@@ -40,6 +40,8 @@ object Routes {
     const val BAJA_TEMPORAL = "baja_temporal"
     const val PAYMENTS = "payments"
     const val DIGITAL_ID = "digital_id"
+    const val MEDICAL_SUPPORT = "medical_support"
+    const val MY_APPOINTMENTS = "my_appointments"
     
     // Admin
     const val ADMIN_ALUMNOS = "admin_alumnos"
