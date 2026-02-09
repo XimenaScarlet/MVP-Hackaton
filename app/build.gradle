@@ -101,8 +101,10 @@ dependencies {
     // ZXing (generar QR)
     implementation 'com.google.zxing:core:3.5.3'
 
-    // Poiji for reading excel files
+    // Excel Readers
     implementation 'com.github.ozlerhakan:poiji:3.1.7'
+    implementation 'org.dhatim:fastexcel-reader:0.18.0'
+    
     // StAX implementation for Android (Fixes "Problem occurred while reading data")
     implementation 'stax:stax-api:1.0.1'
     implementation 'com.fasterxml:aalto-xml:1.3.2'

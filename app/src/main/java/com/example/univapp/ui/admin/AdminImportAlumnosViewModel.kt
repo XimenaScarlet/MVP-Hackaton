@@ -9,17 +9,18 @@ import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.Alumno
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.poiji.bind.Poiji
-import com.poiji.option.PoijiOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import org.dhatim.fastexcel.reader.ReadableWorkbook
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
+import kotlin.streams.asSequence
 
 class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -33,7 +34,8 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
             try {
                 val result = withContext(Dispatchers.IO) {
                     val context = getApplication<Application>().applicationContext
-                    val tempFile = File(context.cacheDir, "import_alumnos_v3.xlsx")
+                    // BUG FIX: Declare tempFile outside try to access it in finally
+                    val tempFile = File(context.cacheDir, "import_alumnos_fast.xlsx")
                     
                     try {
                         inputStream?.use { input ->
@@ -46,31 +48,25 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                             throw Exception("No se pudo crear el archivo temporal o está vacío.")
                         }
 
-                        Log.d("ImportExcel", "Archivo copiado a cache: ${tempFile.absolutePath} (${tempFile.length()} bytes)")
+                        Log.d("ImportExcel", "Archivo copiado a cache: ${tempFile.absolutePath}")
 
-                        // MEJORA: Opciones por defecto de Poiji para mayor compatibilidad con Android StAX
-                        val options = PoijiOptions.PoijiOptionsBuilder.settings().build()
-                        
-                        val rawList: List<Alumno> = try {
-                            Poiji.fromExcel(tempFile, Alumno::class.java, options)
-                        } catch (e: Exception) {
-                            Log.e("ImportExcel", "Error de lectura Poiji", e)
-                            throw Exception("Error de lectura: ${e.localizedMessage ?: "Formato no válido"}")
-                        }
+                        // REEMPLAZO DE POIJI POR FASTEXCEL-READER
+                        val alumnos = leerAlumnosDesdeExcel(tempFile)
 
-                        if (rawList.isNullOrEmpty()) {
+                        if (alumnos.isEmpty()) {
                             throw Exception("No se encontraron filas de datos legibles.")
                         }
 
                         val validAlumnos = mutableListOf<Alumno>()
                         val errors = mutableListOf<String>()
 
-                        rawList.forEachIndexed { index, alumno ->
+                        alumnos.forEachIndexed { index, alumno ->
                             val rowNum = index + 2 
-                            val matricula = alumno.matricula?.toString()?.trim() ?: ""
+                            val matricula = alumno.matricula?.trim() ?: ""
                             
                             if (matricula.isEmpty() || matricula.equals("Matricula", true) || matricula.equals("Matrícula", true)) return@forEachIndexed
 
+                            // Sanitizar ID para Firestore (alfanumérico y guiones)
                             val safeDocId = matricula.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
 
                             when {
@@ -81,14 +77,15 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                                 else -> {
                                     validAlumnos.add(alumno.copy(
                                         id = safeDocId,
-                                        matricula = safeDocId
+                                        matricula = matricula // Conservar matrícula original
                                     ))
                                 }
                             }
                         }
 
                         if (validAlumnos.isEmpty()) {
-                            throw Exception("No se encontraron registros válidos para importar.\n${errors.take(1)}")
+                            // BUG FIX: cleaner error message without brackets
+                            throw Exception("No se encontraron registros válidos para importar.\n${errors.firstOrNull() ?: ""}")
                         }
 
                         val db = Firebase.firestore
@@ -118,6 +115,53 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
                 Log.e("ImportExcel", "Error fatal", t)
                 _importState.value = ImportState.Error(t.message ?: "Error desconocido.")
             }
+        }
+    }
+
+    private fun leerAlumnosDesdeExcel(file: File): List<Alumno> {
+        FileInputStream(file).use { fis ->
+            val wb = ReadableWorkbook(fis)
+            // BUG FIX: Handle null sheet
+            val sheet = wb.firstSheet ?: return emptyList()
+            val alumnos = mutableListOf<Alumno>()
+
+            sheet.openStream().use { rows ->
+                // Usar asSequence() para poder usar drop(1) de Kotlin sobre un Stream de Java
+                rows.asSequence().drop(1).forEach { row -> 
+                    val matricula = row.getCellText(0)?.trim()
+                    val nombre = row.getCellText(1)?.trim()
+                    val correo = row.getCellText(2)?.trim()
+                    val carreraId = row.getCellText(3)?.trim()
+                    val grupoId = row.getCellText(4)?.trim()
+
+                    // Ignorar filas vacías
+                    if (matricula.isNullOrBlank() && nombre.isNullOrBlank() && correo.isNullOrBlank()) return@forEach
+
+                    alumnos.add(
+                        Alumno(
+                            matricula = matricula,
+                            nombre = nombre,
+                            correo = correo,
+                            carreraId = carreraId,
+                            grupoId = grupoId
+                        )
+                    )
+                }
+            }
+            return alumnos
+        }
+    }
+
+    private fun org.dhatim.fastexcel.reader.Row.getCellText(index: Int): String? {
+        val cell = getCell(index) ?: return null
+        return when (cell.type) {
+            org.dhatim.fastexcel.reader.CellType.STRING -> cell.asString()
+            org.dhatim.fastexcel.reader.CellType.NUMBER -> {
+                val n = cell.asNumber().toDouble()
+                if (n % 1.0 == 0.0) n.toLong().toString() else n.toString()
+            }
+            org.dhatim.fastexcel.reader.CellType.BOOLEAN -> cell.asBoolean().toString()
+            else -> cell.text
         }
     }
 
