@@ -32,7 +32,6 @@ fun AppNavHost(
     adminGruposViewModel: AdminGruposViewModel = viewModel()
 ) {
     val nav = rememberNavController()
-    val scope = rememberCoroutineScope()
     val user by authVM.user.collectAsState()
     val offlineSession by authVM.offlineSession.collectAsState()
     val isAdmin by authVM.isAdmin.collectAsState()
@@ -53,6 +52,15 @@ fun AppNavHost(
         sosViewModel.setOfflineSession(offlineSession)
     }
 
+    // CONTROL DE NAVEGACIÓN GLOBAL (LOGOUT)
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            nav.navigate(Routes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     val adminSosViewModel: AdminSosViewModel = viewModel()
     val proceduresVM: StudentProceduresViewModel = viewModel()
     val healthVM: HealthViewModel = viewModel()
@@ -62,72 +70,44 @@ fun AppNavHost(
 
     NavHost(navController = nav, startDestination = Routes.LOGIN) {
 
-        /* ------------ Auth ------------ */
         composable(Routes.LOGIN) {
             LoginScreen(
                 vm = authVM,
                 errorText = authError,
-                onLogin = { id, pass, _ -> 
-                    authVM.login(id, pass) { error -> }
-                },
+                onLogin = { id, pass, _ -> authVM.login(id, pass) },
                 onDismissError = { authVM.clearError() }
             )
 
+            // Redirección al entrar si ya está logueado
             LaunchedEffect(isLoggedIn, isAdmin) {
-                if (!isLoggedIn) return@LaunchedEffect
-                when (isAdmin) {
-                    true -> nav.navigate(Routes.ADMIN_HOME) {
+                if (isLoggedIn && isAdmin != null) {
+                    val target = if (isAdmin == true) Routes.ADMIN_HOME else Routes.HOME
+                    nav.navigate(target) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
-                        launchSingleTop = true
                     }
-                    false -> nav.navigate(Routes.HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                    null -> Unit
                 }
-            }
-
-            if (isLoggedIn && isAdmin == null) {
-                Box(Modifier.fillMaxSize()) { CircularProgressIndicator() }
             }
         }
 
         composable(Routes.HOME) {
-            val displayName = when {
-                user?.email != null -> user!!.email!!.substringBefore("@")
-                offlineSession?.email != null -> offlineSession!!.email.substringBefore("@")
-                else -> "Alumno"
-            }
+            val displayName = (user?.email ?: offlineSession?.email ?: "Alumno").substringBefore("@")
             HomeScreen(
-                userName          = displayName,
-                onGoProfile       = { nav.navigate(Routes.PROFILE) },
+                userName = displayName,
+                onGoProfile = { nav.navigate(Routes.PROFILE) },
                 onGoStudentServices = { nav.navigate(Routes.STUDENT_SERVICES) },
-                onGoHealth        = { nav.navigate(Routes.HEALTH) },
-                onGoSettings      = { nav.navigate(Routes.SETTINGS) },
-                onGoSubjects      = { nav.navigate(Routes.SUBJECTS) },
+                onGoHealth = { nav.navigate(Routes.HEALTH) },
+                onGoSettings = { nav.navigate(Routes.SETTINGS) },
+                onGoSubjects = { nav.navigate(Routes.SUBJECTS) },
                 onGoAnnouncements = { nav.navigate(Routes.ANNOUNCEMENTS) },
-                onGoTimetable     = { nav.navigate(Routes.TIMETABLE) },
-                onLogout          = {
-                    authVM.logout()
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(0) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
+                onGoTimetable = { nav.navigate(Routes.TIMETABLE) },
+                onLogout = { authVM.logout() },
                 settingsVm = settingsVM
             )
         }
 
         composable(Routes.ADMIN_HOME) {
             AdminDashboard(
-                onLogout = {
-                    authVM.logout()
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(0) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
+                onLogout = { authVM.logout() },
                 onOpenAlumnos = { nav.navigate(Routes.ADMIN_ALUMNOS) },
                 onOpenMaterias = { nav.navigate(Routes.ADMIN_MATERIAS) },
                 onOpenGrupos = { nav.navigate(Routes.ADMIN_GRUPOS) },
@@ -140,13 +120,11 @@ fun AppNavHost(
         }
         
         composable(Routes.ADMIN_SOS_MAP) {
-            AdminSosMapScreen(
-                viewModel = adminSosViewModel,
-                onBack = { nav.popBackStack() }
-            )
+            AdminSosMapScreen(viewModel = adminSosViewModel, onBack = { nav.popBackStack() })
         }
 
         composable(Routes.ADMIN_ANNOUNCEMENTS) { AdminAnnouncementsScreen(onBack = { nav.popBackStack() }) }
+        
         composable(Routes.ADMIN_ALUMNOS) {
             AdminAlumnosScreen(
                 onBack = { nav.popBackStack() },
@@ -155,6 +133,7 @@ fun AppNavHost(
                 onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_ALUMNOS) }
             )
         }
+
         composable(Routes.ADMIN_MATERIAS) {
             val vm: AdminMateriasViewModel = viewModel()
             val uiState by vm.uiState.collectAsState()
@@ -170,6 +149,7 @@ fun AppNavHost(
                 vm = vm
             )
         }
+
         composable(Routes.ADMIN_GRUPOS) {
             val uiState by adminGruposViewModel.uiState.collectAsState()
             AdminGruposScreen(
@@ -184,6 +164,7 @@ fun AppNavHost(
                 onCarreraSelected = { adminGruposViewModel.onCarreraSelected(it) }
             )
         }
+
         composable(Routes.ADMIN_PROFESORES) { backStackEntry ->
             val vm: AdminProfesoresViewModel = viewModel(backStackEntry)
             val uiState by vm.uiState.collectAsState()
@@ -197,6 +178,7 @@ fun AppNavHost(
                 vm = vm
             )
         }
+
         composable(Routes.ADMIN_HORARIOS) {
             val vm: AdminHorariosViewModel = viewModel()
             val uiState by vm.uiState.collectAsState()
@@ -211,8 +193,10 @@ fun AppNavHost(
                 vm = vm
             )
         }
+
         composable(Routes.ADMIN_ACTIVITY) { AdminActivityScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_IMPORT_ALUMNOS) { ImportAlumnosScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.ADMIN_IMPORT_MATERIAS) { ImportMateriasScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_ADD_ALUMNO) { AdminAddAlumnoScreen(onBack = { nav.popBackStack() }) }
 
         composable(
@@ -318,10 +302,6 @@ fun AppNavHost(
             AddProfesorScreen(carreraId = carreraId, onBack = { nav.popBackStack() })
         }
 
-        composable(Routes.ADMIN_IMPORT_MATERIAS) { ImportMateriasScreen(onBack = { nav.popBackStack() }) }
-        composable(Routes.ADMIN_IMPORT_HORARIOS) { /* TODO: Implement ImportHorariosScreen */ }
-
-        /* ------------ Alumno ------------ */
         composable(Routes.PROFILE) { ProfileScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
         composable(Routes.STUDENT_SERVICES) {
             StudentServicesScreen(
@@ -335,9 +315,7 @@ fun AppNavHost(
             )
         }
         composable(Routes.DIGITAL_ID) { DigitalIDScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
-        composable(Routes.STUDENT_DOCUMENTS) {
-            StudentDocumentsScreen(onBack = { nav.popBackStack() }, vm = proceduresVM)
-        }
+        composable(Routes.STUDENT_DOCUMENTS) { StudentDocumentsScreen(onBack = { nav.popBackStack() }, vm = proceduresVM) }
         composable(Routes.STUDENT_PROCEDURES) {
             StudentProceduresScreen(
                 onBack = { nav.popBackStack() },
@@ -370,37 +348,21 @@ fun AppNavHost(
                 onBack = { nav.popBackStack() },
                 vm = proceduresVM,
                 onFinish = { isDigital ->
-                    if (isDigital) {
-                        nav.navigate(Routes.STUDENT_DOCUMENTS) {
-                            popUpTo(Routes.KARDEX_SELECTION) { inclusive = true }
-                        }
-                    } else {
-                        nav.navigate(Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS) {
-                            popUpTo(Routes.KARDEX_SELECTION) { inclusive = true }
-                        }
-                    }
+                    val target = if (isDigital) Routes.STUDENT_DOCUMENTS else Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS
+                    nav.navigate(target) { popUpTo(Routes.KARDEX_SELECTION) { inclusive = true } }
                 }
             )
         }
         composable(Routes.STUDENT_ENROLLMENT_CERTIFICATE) {
-            StudentEnrollmentCertificateScreen(
-                onBack = { nav.popBackStack() },
-                onRequest = { nav.navigate(Routes.STUDENT_ENROLLMENT_FORM) },
-                settingsVm = settingsVM
-            )
+            StudentEnrollmentCertificateScreen(onBack = { nav.popBackStack() }, onRequest = { nav.navigate(Routes.STUDENT_ENROLLMENT_FORM) }, settingsVm = settingsVM)
         }
         composable(Routes.STUDENT_ENROLLMENT_FORM) {
             StudentEnrollmentFormScreen(
                 onBack = { nav.popBackStack() },
                 vm = proceduresVM,
                 onSubmit = { isDigital ->
-                    if (isDigital) {
-                        nav.navigate(Routes.STUDENT_DOCUMENTS) {
-                            popUpTo(Routes.STUDENT_PROCEDURES) { inclusive = false }
-                        }
-                    } else {
-                        nav.navigate(Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS)
-                    }
+                    if (isDigital) nav.navigate(Routes.STUDENT_DOCUMENTS) { popUpTo(Routes.STUDENT_PROCEDURES) { inclusive = false } }
+                    else nav.navigate(Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS)
                 },
                 settingsVm = settingsVM
             )
@@ -434,125 +396,42 @@ fun AppNavHost(
             )
         }
 
-        /* ------------ Salud ------------ */
         composable(Routes.SOS_ACTIVE) {
             SOSActiveScreen(
                 viewModel = sosViewModel,
                 onCancel = { nav.popBackStack() },
                 onCallEmergencies = {
-                    val intent = Intent(Intent.ACTION_DIAL).apply {
-                        data = Uri.parse("tel:911")
-                    }
+                    val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:911") }
                     context.startActivity(intent)
                 }
             )
         }
 
-        composable(Routes.PSYCHOLOGIST_DETAIL) {
-            PsychologistDetailScreen(
-                onBack = { nav.popBackStack() }, 
-                onBookAppointment = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) }
-            )
-        }
-        composable(Routes.MEDICAL_SUPPORT) {
-            MedicalSupportScreen(onBack = { nav.popBackStack() }, onBook = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) })
-        }
-        composable(Routes.MEDICAL_APPOINTMENT_FORM) {
-            MedicalAppointmentFormScreen(
-                onBack = { nav.popBackStack() }, 
-                onContinue = { nav.navigate(Routes.MEDICAL_SCHEDULE_SELECTION) },
-                vm = medicalVm,
-                settingsVm = settingsVM
-            )
-        }
-        composable(Routes.MEDICAL_SCHEDULE_SELECTION) {
-            MedicalScheduleSelectionScreen(
-                onBack = { nav.popBackStack() }, 
-                onContinue = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUMMARY) },
-                vm = medicalVm,
-                healthVm = healthVM,
-                settingsVm = settingsVM
-            )
-        }
-        composable(Routes.MEDICAL_APPOINTMENT_SUMMARY) {
-            MedicalAppointmentSummaryScreen(
-                onBack = { nav.popBackStack() },
-                onConfirm = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUCCESS) },
-                onEdit = { nav.popBackStack() },
-                vm = medicalVm,
-                settingsVm = settingsVM
-            )
-        }
-        composable(Routes.MEDICAL_APPOINTMENT_SUCCESS) {
-            MedicalAppointmentSuccessScreen(
-                onGoHome = { nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } },
-                vm = medicalVm
-            )
-        }
-        
-        composable(Routes.MY_APPOINTMENTS) {
-            MyAppointmentsScreen(
-                onBack = { nav.popBackStack() },
-                medicalVm = medicalVm,
-                settingsVm = settingsVM
-            )
-        }
+        composable(Routes.PSYCHOLOGIST_DETAIL) { PsychologistDetailScreen(onBack = { nav.popBackStack() }, onBookAppointment = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) }) }
+        composable(Routes.MEDICAL_SUPPORT) { MedicalSupportScreen(onBack = { nav.popBackStack() }, onBook = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) }) }
+        composable(Routes.MEDICAL_APPOINTMENT_FORM) { MedicalAppointmentFormScreen(onBack = { nav.popBackStack() }, onContinue = { nav.navigate(Routes.MEDICAL_SCHEDULE_SELECTION) }, vm = medicalVm, settingsVm = settingsVM) }
+        composable(Routes.MEDICAL_SCHEDULE_SELECTION) { MedicalScheduleSelectionScreen(onBack = { nav.popBackStack() }, onContinue = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUMMARY) }, vm = medicalVm, healthVm = healthVM, settingsVm = settingsVM) }
+        composable(Routes.MEDICAL_APPOINTMENT_SUMMARY) { MedicalAppointmentSummaryScreen(onBack = { nav.popBackStack() }, onConfirm = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUCCESS) }, onEdit = { nav.popBackStack() }, vm = medicalVm, settingsVm = settingsVM) }
+        composable(Routes.MEDICAL_APPOINTMENT_SUCCESS) { MedicalAppointmentSuccessScreen(onGoHome = { nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } }, vm = medicalVm) }
+        composable(Routes.MY_APPOINTMENTS) { MyAppointmentsScreen(onBack = { nav.popBackStack() }, medicalVm = medicalVm, settingsVm = settingsVM) }
+        composable(Routes.ID_REPLACEMENT) { IDReplacementScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = proceduresVM, settingsVm = settingsVM) }
+        composable(Routes.BAJA_TEMPORAL) { BajaTemporalScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = proceduresVM, settingsVm = settingsVM) }
+        composable(Routes.INTERNSHIP_CERTIFICATE) { InternshipCertificateScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = proceduresVM, settingsVm = settingsVM) }
 
-        composable(Routes.ID_REPLACEMENT) {
-            IDReplacementScreen(
-                onBack = { nav.popBackStack() },
-                onFinish = { nav.popBackStack() },
-                vm = proceduresVM,
-                settingsVm = settingsVM
-            )
-        }
-        composable(Routes.BAJA_TEMPORAL) {
-            BajaTemporalScreen(
-                onBack = { nav.popBackStack() },
-                onFinish = { nav.popBackStack() },
-                vm = proceduresVM,
-                settingsVm = settingsVM
-            )
-        }
-        composable(Routes.INTERNSHIP_CERTIFICATE) {
-            InternshipCertificateScreen(
-                onBack = { nav.popBackStack() },
-                onFinish = { nav.popBackStack() },
-                vm = proceduresVM,
-                settingsVm = settingsVM
-            )
-        }
-
-        /* ------------ Académico ------------ */
-        composable(Routes.SUBJECTS) {
-            SubjectsScreen(
-                onBack = { nav.popBackStack() }, 
-                onOpenSubject = { t, id -> nav.navigate("subjectDetail/$t/$id") }, 
-                onGoGrades = { nav.navigate(Routes.GRADES) },
-                settingsVm = settingsVM
-            )
-        }
+        composable(Routes.SUBJECTS) { SubjectsScreen(onBack = { nav.popBackStack() }, onOpenSubject = { t, id -> nav.navigate("subjectDetail/$t/$id") }, onGoGrades = { nav.navigate(Routes.GRADES) }, settingsVm = settingsVM) }
         composable(Routes.GRADES) { GradesScreen(onBack = { nav.popBackStack() }) }
         composable(
-            route = Routes.SUBJECT_DETAIL,
+            route = "subjectDetail/{term}/{subjectId}",
             arguments = listOf(navArgument("term") { type = NavType.IntType }, navArgument("subjectId") { type = NavType.StringType })
         ) { back ->
             val t = back.arguments?.getInt("term") ?: 1
             val id = back.arguments?.getString("subjectId") ?: ""
             SubjectDetailScreen(subjectId = id, term = t, onBack = { nav.popBackStack() })
         }
-        composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { nav.popBackStack() }, onLogout = { authVM.logout(); nav.navigate(Routes.LOGIN) { popUpTo(0) } }, vm = settingsVM)
-        }
-
+        composable(Routes.SETTINGS) { SettingsScreen(onBack = { nav.popBackStack() }, onLogout = { authVM.logout() }, vm = settingsVM) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
-        composable(Routes.ROUTES) {
-            RoutesSelectorScreen(onBack = { nav.popBackStack() }, onOpenSaltillo = { nav.navigate("routeMap/Saltillo") }, onOpenRamos = { nav.navigate("routeMap/Ramos") })
-        }
-        composable(
-            route = Routes.ROUTE_MAP,
-            arguments = listOf(navArgument("id") { type = NavType.StringType })
-        ) { back ->
+        composable(Routes.ROUTES) { RoutesSelectorScreen(onBack = { nav.popBackStack() }, onOpenSaltillo = { nav.navigate("routeMap/Saltillo") }, onOpenRamos = { nav.navigate("routeMap/Ramos") }) }
+        composable(route = Routes.ROUTE_MAP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { back ->
             val id = back.arguments?.getString("id") ?: "R5"
             RouteMapScreen(routeId = id, onBack = { nav.popBackStack() })
         }

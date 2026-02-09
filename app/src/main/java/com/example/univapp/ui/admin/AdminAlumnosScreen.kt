@@ -70,13 +70,6 @@ fun AdminAlumnosScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
-                actions = {
-                    if (isGrupoSelected) {
-                        IconButton(onClick = { /* TODO: Search */ }) {
-                            Icon(Icons.Default.Search, contentDescription = "Buscar", tint = Color(0xFF007BFF))
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
         },

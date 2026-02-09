@@ -8,19 +8,19 @@ import java.util.Date
 data class Alumno(
     @get:Exclude var id: String = "",
     
-    @ExcelCell(0) // Column A: Matrícula
+    @ExcelCell(0) // Columna A
     var matricula: String? = null,
     
-    @ExcelCell(1) // Column B: Nombre
+    @ExcelCell(1) // Columna B
     var nombre: String? = null,
     
-    @ExcelCell(2) // Column C: Correo
+    @ExcelCell(2) // Columna C
     var correo: String? = null,
     
-    @ExcelCell(3) // Column D: Carrera ID (Optional)
+    @ExcelCell(3) // Columna D
     var carreraId: String? = null,
     
-    @ExcelCell(4) // Column E: Grupo ID (Optional)
+    @ExcelCell(4) // Columna E
     var grupoId: String? = null,
     
     var estatusAcademico: String = "Activo",

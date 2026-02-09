@@ -70,16 +70,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refreshAdminFlag() {
-        val u = auth.currentUser ?: run {
-            _isAdmin.value = null
-            return
-        }
-        _isAdmin.value = null
+        val u = auth.currentUser ?: return
         u.getIdToken(true)
             .addOnSuccessListener { res ->
+                // Verificar que sigamos logueados antes de actualizar el estado
+                if (auth.currentUser == null) return@addOnSuccessListener
+                
                 val claims = res.claims
-                val admin =
-                    (claims["admin"] as? Boolean == true) ||
+                val admin = (claims["admin"] as? Boolean == true) ||
                             ((claims["role"] as? String)?.equals("admin", true) == true)
 
                 _isAdmin.value = admin
@@ -88,7 +86,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     _offlineSession.value = null
                 }
             }
-            .addOnFailureListener { _isAdmin.value = false }
+            .addOnFailureListener { 
+                if (auth.currentUser != null) _isAdmin.value = false 
+            }
     }
 
     private fun mapError(th: Throwable?): String {
@@ -147,9 +147,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
+        // Limpieza inmediata y síncrona del estado para evitar rebotes de navegación
+        _user.value = null
+        _offlineSession.value = null
+        _isAdmin.value = null
+        
         viewModelScope.launch {
             sessionManager.clearSession()
-            _offlineSession.value = null
             auth.signOut()
         }
     }
