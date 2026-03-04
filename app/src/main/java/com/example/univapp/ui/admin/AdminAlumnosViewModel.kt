@@ -93,8 +93,6 @@ class AdminAlumnosViewModel : ViewModel() {
 
         _uiState.update { it.copy(isLoadingAlumnos = true) }
         
-        // MEJORA: Buscamos por ID de documento O por el Nombre del grupo (ej. "9IDGSA")
-        // Esto soluciona el problema de que no se vean los alumnos importados por Excel
         val groupName = grupo.nombre ?: ""
         
         alumnosListener = db.collection("alumnos")
@@ -136,6 +134,16 @@ class AdminAlumnosViewModel : ViewModel() {
             }
         }
         _uiState.update { it.copy(alumnos = filtered) }
+    }
+
+    fun deleteAlumno(alumnoId: String) {
+        viewModelScope.launch {
+            try {
+                db.collection("alumnos").document(alumnoId).delete().await()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al eliminar alumno.") }
+            }
+        }
     }
 
     override fun onCleared() {

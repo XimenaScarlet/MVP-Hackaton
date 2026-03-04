@@ -1,27 +1,32 @@
 package com.example.univapp.data
 
 import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import com.example.univapp.ui.StudentProceduresViewModel.DocumentRecord
 import com.example.univapp.ui.StudentProceduresViewModel.RequestRecord
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
-
-// Renombrado para evitar conflicto con SessionManager
-private val Context.localDataStore by preferencesDataStore(name = "univapp_local_store")
 
 class LocalStore(private val context: Context) {
 
     companion object {
-        private val REQUESTS_KEY = stringPreferencesKey("requests_json")
-        private val DOCUMENTS_KEY = stringPreferencesKey("documents_json")
+        private const val PREFS_NAME = "univapp_local_store_encrypted"
+        private const val REQUESTS_KEY = "requests_json"
+        private const val DOCUMENTS_KEY = "documents_json"
     }
 
-    suspend fun saveRequests(requests: List<RequestRecord>) {
+    private val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+
+    private val sharedPreferences = EncryptedSharedPreferences.create(
+        PREFS_NAME,
+        masterKeyAlias,
+        context,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    fun saveRequests(requests: List<RequestRecord>) {
         val array = JSONArray()
         requests.forEach { req ->
             val obj = JSONObject().apply {
@@ -36,13 +41,14 @@ class LocalStore(private val context: Context) {
             }
             array.put(obj)
         }
-        context.localDataStore.edit { prefs ->
-            prefs[REQUESTS_KEY] = array.toString()
+        with(sharedPreferences.edit()) {
+            putString(REQUESTS_KEY, array.toString())
+            apply()
         }
     }
 
-    val requestsFlow: Flow<List<RequestRecord>> = context.localDataStore.data.map { prefs ->
-        val json = prefs[REQUESTS_KEY] ?: "[]"
+    fun getRequests(): List<RequestRecord> {
+        val json = sharedPreferences.getString(REQUESTS_KEY, "[]") ?: "[]"
         val array = JSONArray(json)
         val list = mutableListOf<RequestRecord>()
         for (i in 0 until array.length()) {
@@ -60,10 +66,10 @@ class LocalStore(private val context: Context) {
                 )
             )
         }
-        list
+        return list
     }
 
-    suspend fun saveDocuments(documents: List<DocumentRecord>) {
+    fun saveDocuments(documents: List<DocumentRecord>) {
         val array = JSONArray()
         documents.forEach { doc ->
             val obj = JSONObject().apply {
@@ -77,13 +83,14 @@ class LocalStore(private val context: Context) {
             }
             array.put(obj)
         }
-        context.localDataStore.edit { prefs ->
-            prefs[DOCUMENTS_KEY] = array.toString()
+        with(sharedPreferences.edit()) {
+            putString(DOCUMENTS_KEY, array.toString())
+            apply()
         }
     }
 
-    val documentsFlow: Flow<List<DocumentRecord>> = context.localDataStore.data.map { prefs ->
-        val json = prefs[DOCUMENTS_KEY] ?: "[]"
+    fun getDocuments(): List<DocumentRecord> {
+        val json = sharedPreferences.getString(DOCUMENTS_KEY, "[]") ?: "[]"
         val array = JSONArray(json)
         val list = mutableListOf<DocumentRecord>()
         for (i in 0 until array.length()) {
@@ -100,6 +107,6 @@ class LocalStore(private val context: Context) {
                 )
             )
         }
-        list
+        return list
     }
 }

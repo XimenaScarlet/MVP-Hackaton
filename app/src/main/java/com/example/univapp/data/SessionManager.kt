@@ -3,17 +3,8 @@ package com.example.univapp.data
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 data class Session(
     val userId: String,
@@ -24,60 +15,89 @@ data class Session(
 class SessionManager(private val context: Context) {
 
     companion object {
-        private val USER_ID_KEY = stringPreferencesKey("user_id")
-        private val EMAIL_KEY = stringPreferencesKey("email")
-        private val IS_ADMIN_KEY = booleanPreferencesKey("is_admin")
-        private val IS_LOGGED_IN_KEY = booleanPreferencesKey("is_logged_in")
-        
+        private const val PREFS_NAME = "session_prefs"
+        private const val USER_ID_KEY = "user_id"
+        private const val EMAIL_KEY = "email"
+        private const val IS_ADMIN_KEY = "is_admin"
+        private const val IS_LOGGED_IN_KEY = "is_logged_in"
+
         // Settings keys
-        private val SHOW_EMAIL_KEY = booleanPreferencesKey("show_email")
-        private val PUSH_NOTIFICATIONS_KEY = booleanPreferencesKey("push_notifications")
-        private val DARK_MODE_KEY = booleanPreferencesKey("dark_mode")
+        private const val SHOW_EMAIL_KEY = "show_email"
+        private const val PUSH_NOTIFICATIONS_KEY = "push_notifications"
+        private const val DARK_MODE_KEY = "dark_mode"
     }
 
-    suspend fun saveSession(userId: String, email: String, isAdmin: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[USER_ID_KEY] = userId
-            preferences[EMAIL_KEY] = email
-            preferences[IS_ADMIN_KEY] = isAdmin
-            preferences[IS_LOGGED_IN_KEY] = true
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val sharedPreferences = EncryptedSharedPreferences.create(
+        context,
+        PREFS_NAME,
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    fun saveSession(userId: String, email: String, isAdmin: Boolean) {
+        with(sharedPreferences.edit()) {
+            putString(USER_ID_KEY, userId)
+            putString(EMAIL_KEY, email)
+            putBoolean(IS_ADMIN_KEY, isAdmin)
+            putBoolean(IS_LOGGED_IN_KEY, true)
+            apply()
         }
     }
 
-    suspend fun getSession(): Session? {
-        val preferences = try { context.dataStore.data.first() } catch (e: Exception) { null }
-        if (preferences == null) return null
-        
-        val isLoggedIn = preferences[IS_LOGGED_IN_KEY] ?: false
+    fun getSession(): Session? {
+        val isLoggedIn = sharedPreferences.getBoolean(IS_LOGGED_IN_KEY, false)
         if (!isLoggedIn) return null
 
-        val userId = preferences[USER_ID_KEY]
-        val email = preferences[EMAIL_KEY]
-        val isAdmin = preferences[IS_ADMIN_KEY]
+        val userId = sharedPreferences.getString(USER_ID_KEY, null)
+        val email = sharedPreferences.getString(EMAIL_KEY, null)
+        val isAdmin = sharedPreferences.getBoolean(IS_ADMIN_KEY, false)
 
-        return if (userId != null && email != null && isAdmin != null) {
+        return if (userId != null && email != null) {
             Session(userId, email, isAdmin)
         } else null
     }
 
-    suspend fun clearSession() {
-        context.dataStore.edit { it.clear() }
+    fun clearSession() {
+        with(sharedPreferences.edit()) {
+            clear()
+            apply()
+        }
     }
 
     // Settings logic
-    val showEmail: Flow<Boolean> = context.dataStore.data.map { it[SHOW_EMAIL_KEY] ?: true }
-    suspend fun setShowEmail(show: Boolean) {
-        context.dataStore.edit { it[SHOW_EMAIL_KEY] = show }
+    val showEmail: Boolean
+        get() = sharedPreferences.getBoolean(SHOW_EMAIL_KEY, true)
+
+    fun setShowEmail(show: Boolean) {
+        with(sharedPreferences.edit()) {
+            putBoolean(SHOW_EMAIL_KEY, show)
+            apply()
+        }
     }
 
-    val pushNotifications: Flow<Boolean> = context.dataStore.data.map { it[PUSH_NOTIFICATIONS_KEY] ?: true }
-    suspend fun setPushNotifications(enabled: Boolean) {
-        context.dataStore.edit { it[PUSH_NOTIFICATIONS_KEY] = enabled }
+    val pushNotifications: Boolean
+        get() = sharedPreferences.getBoolean(PUSH_NOTIFICATIONS_KEY, true)
+
+    fun setPushNotifications(enabled: Boolean) {
+        with(sharedPreferences.edit()) {
+            putBoolean(PUSH_NOTIFICATIONS_KEY, enabled)
+            apply()
+        }
     }
 
-    val darkMode: Flow<Boolean> = context.dataStore.data.map { it[DARK_MODE_KEY] ?: false }
-    suspend fun setDarkMode(enabled: Boolean) {
-        context.dataStore.edit { it[DARK_MODE_KEY] = enabled }
+    val darkMode: Boolean
+        get() = sharedPreferences.getBoolean(DARK_MODE_KEY, false)
+
+    fun setDarkMode(enabled: Boolean) {
+        with(sharedPreferences.edit()) {
+            putBoolean(DARK_MODE_KEY, enabled)
+            apply()
+        }
     }
 }
 

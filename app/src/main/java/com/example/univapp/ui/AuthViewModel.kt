@@ -1,6 +1,7 @@
 package com.example.univapp.ui
 
 import android.app.Application
+import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.Session
@@ -64,6 +65,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         auth.removeAuthStateListener(authListener)
     }
 
+    private fun validateInput(identifier: String, password: String?): String? {
+        if (identifier.isBlank()) return "La matrícula o correo no puede estar vacío."
+        if (password != null && password.length < 6) return "La contraseña debe tener al menos 6 caracteres."
+        
+        val email = normalizeIdentifier(identifier)
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            return "El formato del identificador es inválido."
+        }
+        return null
+    }
+
     private fun normalizeIdentifier(idOrEmail: String): String {
         val id = idOrEmail.trim()
         return if (id.contains("@")) id else "$id@alumno.utc.edu.mx"
@@ -73,7 +85,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         val u = auth.currentUser ?: return
         u.getIdToken(true)
             .addOnSuccessListener { res ->
-                // Verificar que sigamos logueados antes de actualizar el estado
                 if (auth.currentUser == null) return@addOnSuccessListener
                 
                 val claims = res.claims
@@ -94,13 +105,20 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private fun mapError(th: Throwable?): String {
         return when (th) {
             is FirebaseNetworkException -> "Sin conexión a internet."
-            is FirebaseAuthInvalidCredentialsException -> "Contraseña incorrecta."
-            is FirebaseAuthInvalidUserException -> "La matrícula no existe."
-            else -> "Error de autenticación."
+            is FirebaseAuthInvalidCredentialsException -> "Credenciales inválidas."
+            is FirebaseAuthInvalidUserException -> "La cuenta no existe o ha sido deshabilitada."
+            else -> "Error de autenticación. Intente de nuevo."
         }
     }
 
     fun login(identifier: String, password: String, onError: (String?) -> Unit = {}) {
+        val validationMsg = validateInput(identifier, password)
+        if (validationMsg != null) {
+            _error.value = validationMsg
+            onError(validationMsg)
+            return
+        }
+
         val email = normalizeIdentifier(identifier)
         _loading.value = true
         _error.value = null
@@ -118,6 +136,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendPasswordResetLink(matricula: String, callback: (ok: Boolean, msg: String?) -> Unit) {
+        val validationMsg = validateInput(matricula, null)
+        if (validationMsg != null) {
+            callback(false, validationMsg)
+            return
+        }
+
         _loading.value = true
         _error.value = null
 
@@ -125,7 +149,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             .addOnSuccessListener { doc ->
                 if (!doc.exists()) {
                     _loading.value = false
-                    callback(false, "La matrícula no existe.")
+                    callback(false, "La matrícula no existe en nuestros registros.")
                     return@addOnSuccessListener
                 }
 
@@ -136,18 +160,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         if (task.isSuccessful) {
                             callback(true, "Te enviamos un correo para restablecer tu contraseña.")
                         } else {
-                            callback(false, "No se pudo enviar el correo.")
+                            callback(false, "No se pudo procesar la solicitud en este momento.")
                         }
                     }
             }
             .addOnFailureListener { e ->
                 _loading.value = false
-                callback(false, "Error: ${e.message}")
+                callback(false, "Error de conexión: ${e.message}")
             }
     }
 
     fun logout() {
-        // Limpieza inmediata y síncrona del estado para evitar rebotes de navegación
         _user.value = null
         _offlineSession.value = null
         _isAdmin.value = null

@@ -3,19 +3,21 @@ package com.example.univapp.ui.admin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,7 +54,6 @@ class AdminAnnouncementsViewModel : ViewModel() {
                     "timestamp" to Timestamp.now(),
                     "author" to "Administración"
                 )
-                // Se guarda en la colección "avisos" que es la que lee la app de alumnos
                 db.collection("avisos").add(announcement).await()
                 _message.value = "Aviso publicado con éxito"
                 onComplete()
@@ -73,119 +74,241 @@ fun AdminAnnouncementsScreen(
     onBack: () -> Unit,
     vm: AdminAnnouncementsViewModel = viewModel()
 ) {
+    val isDark = isSystemInDarkTheme()
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Académico") }
     var isUrgent by remember { mutableStateOf(false) }
-    var expirationDate by remember { mutableStateOf("02/28/2026") } // Fecha de ejemplo
+    var expirationDate by remember { mutableStateOf("12/31/2024") }
     
-    val categories = listOf("Académico", "Eventos", "Pagos", "Talleres")
     val isSending by vm.isSending.collectAsState()
     val message by vm.message.collectAsState()
 
+    // Colores dinámicos
+    val bgColor = if (isDark) Color(0xFF121212) else Color.White
+    val surfaceColor = if (isDark) Color(0xFF1E1E1E) else Color(0xFFF8FAFC)
+    val headerColor = Color(0xFF0F172A)
+    val textColor = if (isDark) Color.White else Color(0xFF1D2939)
+    val labelColor = Color(0xFF64748B)
+
     Scaffold(
         topBar = {
-            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = Color(0xFF1D2939))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .background(headerColor)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                 }
-                Text("Nuevo Aviso", modifier = Modifier.align(Alignment.Center), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1D2939))
+                Text(
+                    "Nuevo Aviso",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
             }
         },
-        containerColor = Color.White
-    ) { padding ->
-        Column(
-            modifier = Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)
-        ) {
-            LabelText("TÍTULO DEL AVISO")
-            TextField(
-                value = title, onValueChange = { title = it },
-                placeholder = { Text("Ej. Suspensión de clases", color = Color(0xFF94A3B8)) },
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
-                colors = TextFieldDefaults.colors(focusedContainerColor = Color(0xFFF8FAFC), unfocusedContainerColor = Color(0xFFF8FAFC), focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            LabelText("CATEGORÍA")
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                categories.forEach { cat ->
-                    val isSelected = selectedCategory == cat
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) Color(0xFF1D4ED8) else Color.White)
-                            .border(1.dp, if (isSelected) Color(0xFF1D4ED8) else Color(0xFFE2E8F0), RoundedCornerShape(20.dp))
-                            .clickable { selectedCategory = cat }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(cat, color = if (isSelected) Color.White else Color(0xFF64748B), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            LabelText("DESCRIPCIÓN")
-            TextField(
-                value = body, onValueChange = { body = it },
-                placeholder = { Text("Escriba los detalles del anuncio aquí...", color = Color(0xFF94A3B8)) },
-                modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(24.dp)),
-                colors = TextFieldDefaults.colors(focusedContainerColor = Color(0xFFF8FAFC), unfocusedContainerColor = Color(0xFFF8FAFC), focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            LabelText("FECHA DE EXPIRACIÓN")
-            Surface(
-                modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(24.dp)),
-                color = Color(0xFFF8FAFC)
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(expirationDate, color = Color(0xFF94A3B8))
-                    Icon(Icons.Default.CalendarToday, null, tint = Color(0xFF64748B), modifier = Modifier.size(20.dp))
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            LabelText("PRIORIDAD")
-            Surface(
-                modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(24.dp)),
-                color = Color(0xFFF8FAFC)
-            ) {
-                Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Aviso Urgente", color = Color(0xFF64748B), fontWeight = FontWeight.Medium)
-                    Switch(checked = isUrgent, onCheckedChange = { isUrgent = it }, colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF1D4ED8)))
-                }
-            }
-
-            Spacer(Modifier.height(40.dp))
-
+        containerColor = bgColor,
+        bottomBar = {
             Button(
                 onClick = { vm.sendAnnouncement(title, body, selectedCategory, isUrgent, expirationDate) { onBack() } },
                 enabled = title.isNotBlank() && body.isNotBlank() && !isSending,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = headerColor)
             ) {
                 if (isSending) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Icon(Icons.Default.Campaign, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text("Publicar Aviso", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Send, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Publicar Aviso", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
                 }
             }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp)
+        ) {
+            LabelHeader("Título del aviso")
+            AvisoTextField(
+                value = title,
+                onValueChange = { title = it },
+                placeholder = "Ej. Suspensión de clases",
+                isDark = isDark
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            LabelHeader("Categoría")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CategoryChip("Académico", selectedCategory == "Académico", Color(0xFF2563EB), isDark) { selectedCategory = it }
+                CategoryChip("Eventos", selectedCategory == "Eventos", Color(0xFF10B981), isDark) { selectedCategory = it }
+                CategoryChip("Pagos", selectedCategory == "Pagos", Color(0xFFA855F7), isDark) { selectedCategory = it }
+            }
+            Spacer(Modifier.height(8.dp))
+            CategoryChip("Talleres", selectedCategory == "Talleres", Color(0xFFF59E0B), isDark) { selectedCategory = it }
+
+            Spacer(Modifier.height(24.dp))
+
+            LabelHeader("Descripción del contenido")
+            AvisoTextField(
+                value = body,
+                onValueChange = { body = it },
+                placeholder = "Proporcione los detalles del anuncio...",
+                singleLine = false,
+                modifier = Modifier.height(140.dp),
+                isDark = isDark
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            LabelHeader("Fecha de expiración")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(surfaceColor)
+                    .border(1.dp, labelColor.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(expirationDate, color = labelColor)
+                    Icon(Icons.Default.CalendarMonth, null, tint = labelColor)
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            LabelHeader("Prioridad del aviso")
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = bgColor),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF97316).copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PriorityHigh, null, tint = Color(0xFFF97316), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Aviso Urgente", color = textColor, fontWeight = FontWeight.Medium)
+                    }
+                    Switch(
+                        checked = isUrgent,
+                        onCheckedChange = { isUrgent = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFFF97316)
+                        )
+                    )
+                }
+            }
+            
+            Spacer(Modifier.height(100.dp))
         }
     }
 
     if (message != null) {
-        AlertDialog(onDismissRequest = { vm.clearMessage() }, confirmButton = { TextButton(onClick = { vm.clearMessage() }) { Text("Aceptar") } }, title = { Text("Aviso") }, text = { Text(message!!) })
+        AlertDialog(
+            onDismissRequest = { vm.clearMessage() },
+            confirmButton = { TextButton(onClick = { vm.clearMessage() }) { Text("Aceptar") } },
+            title = { Text("Aviso") },
+            text = { Text(message ?: "") }
+        )
     }
 }
 
 @Composable
-private fun LabelText(text: String) {
-    Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), modifier = Modifier.padding(bottom = 8.dp, start = 4.dp))
+private fun LabelHeader(text: String) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFF1D2939).copy(alpha = 0.8f),
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
+}
+
+@Composable
+private fun CategoryChip(
+    text: String,
+    isSelected: Boolean,
+    color: Color,
+    isDark: Boolean,
+    onClick: (String) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick(text) },
+        color = if (isSelected) color else color.copy(alpha = 0.05f),
+        shape = RoundedCornerShape(12.dp),
+        border = if (!isSelected) androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.1f)) else null
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (isSelected) {
+                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                color = if (isSelected) Color.White else color,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AvisoTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    isDark: Boolean,
+    singleLine: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(placeholder, color = Color(0xFF94A3B8)) },
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp)),
+        singleLine = singleLine,
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = if (isDark) Color(0xFF1E1E1E) else Color.White,
+            unfocusedContainerColor = if (isDark) Color(0xFF1E1E1E) else Color.White,
+            focusedBorderColor = Color.Transparent,
+            unfocusedBorderColor = Color.Transparent
+        )
+    )
 }

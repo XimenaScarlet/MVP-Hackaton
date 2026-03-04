@@ -20,7 +20,6 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -74,12 +73,10 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
     }
 
     private fun loadFromLocal() {
-        viewModelScope.launch {
-            val localReqs = localStore.requestsFlow.first()
-            val localDocs = localStore.documentsFlow.first()
-            _allRequests.value = localReqs.sortedByDescending { it.createdAtMillis }
-            _digitalDocuments.value = localDocs.sortedByDescending { it.createdAtMillis }
-        }
+        val localReqs = localStore.getRequests()
+        val localDocs = localStore.getDocuments()
+        _allRequests.value = localReqs.sortedByDescending { it.createdAtMillis }
+        _digitalDocuments.value = localDocs.sortedByDescending { it.createdAtMillis }
     }
 
     private fun loadStudentData() {
@@ -588,7 +585,7 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
         paint.textSize = 10f
         paint.color = Color.DKGRAY
         canvas.drawText("Folio de Validación: $folio", 50f, 750f, paint)
-        canvas.drawText("Este documento es una versión oficial digital para uso interno.", 50f, 770f, paint)
+        canvas.drawText("Este documento es una version oficial digital para uso interno.", 50f, 770f, paint)
 
         pdfDocument.finishPage(page)
         return try {

@@ -2,36 +2,37 @@ package com.example.univapp.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.SessionManager
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionManager = SessionManager(application)
 
-    val showEmail: StateFlow<Boolean> = sessionManager.showEmail
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    private val _showEmail = MutableStateFlow(sessionManager.showEmail)
+    val showEmail: StateFlow<Boolean> = _showEmail.asStateFlow()
 
-    val pushNotifications: StateFlow<Boolean> = sessionManager.pushNotifications
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    private val _pushNotifications = MutableStateFlow(sessionManager.pushNotifications)
+    val pushNotifications: StateFlow<Boolean> = _pushNotifications.asStateFlow()
 
-    val darkMode: StateFlow<Boolean> = sessionManager.darkMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    private val _darkMode = MutableStateFlow(sessionManager.darkMode)
+    val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
 
     fun toggleShowEmail(value: Boolean) {
-        viewModelScope.launch { sessionManager.setShowEmail(value) }
+        sessionManager.setShowEmail(value)
+        _showEmail.value = value
     }
 
     fun togglePushNotifications(value: Boolean) {
-        viewModelScope.launch { sessionManager.setPushNotifications(value) }
+        sessionManager.setPushNotifications(value)
+        _pushNotifications.value = value
     }
 
     fun toggleDarkMode(value: Boolean) {
-        viewModelScope.launch { sessionManager.setDarkMode(value) }
+        sessionManager.setDarkMode(value)
+        _darkMode.value = value
     }
 
     fun clearCache(): Long {
@@ -41,7 +42,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             deletedBytes = getFolderSize(context.cacheDir)
             deleteDir(context.cacheDir)
             
-            // Also external cache
             context.externalCacheDir?.let {
                 deletedBytes += getFolderSize(it)
                 deleteDir(it)
