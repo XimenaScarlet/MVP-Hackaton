@@ -230,7 +230,7 @@ fun ForgotPasswordDialog(
         text = {
             Column {
                 if (successMessage != null) {
-                    Text(successMessage!!)
+                    Text(successMessage ?: "")
                 } else {
                     Text("Te enviaremos un enlace de recuperación al correo asociado a tu matrícula.")
                     Spacer(Modifier.height(16.dp))
@@ -265,8 +265,10 @@ fun ForgotPasswordDialog(
                             vm.sendPasswordResetLink(matricula) { ok, msg ->
                                 if (ok) {
                                     successMessage = msg
+                                    error = null
                                 } else {
                                     error = msg
+                                    successMessage = null
                                 }
                             }
                         }

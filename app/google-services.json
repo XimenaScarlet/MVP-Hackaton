@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "974093311061",
+    "project_id": "hackaton-22e98",
+    "storage_bucket": "hackaton-22e98.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:974093311061:android:48eb571ee12c24248888dc",
+        "android_client_info": {
+          "package_name": "com.example.univapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTwY_tix95T_mQa8borhqyews65DWVh2k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

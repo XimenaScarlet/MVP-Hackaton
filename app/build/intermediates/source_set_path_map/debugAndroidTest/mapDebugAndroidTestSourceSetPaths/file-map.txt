@@ -1,0 +1,5 @@
+com.example.univapp.test.app-androidTest-0 C:\Users\scarl\StudioProjects\MVP-Hackaton\app\build\generated\res\resValues\androidTest\debug
+com.example.univapp.test.app-updated_navigation_xml-1 C:\Users\scarl\StudioProjects\MVP-Hackaton\app\build\generated\updated_navigation_xml\debugAndroidTest
+com.example.univapp.test.app-mergeDebugAndroidTestResources-2 C:\Users\scarl\StudioProjects\MVP-Hackaton\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+com.example.univapp.test.app-mergeDebugAndroidTestResources-3 C:\Users\scarl\StudioProjects\MVP-Hackaton\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+com.example.univapp.test.app-debugAndroidTest-4 C:\Users\scarl\StudioProjects\MVP-Hackaton\app\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources

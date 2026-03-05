@@ -98,11 +98,9 @@ fun AdminAlumnosScreen(
             }
         }
     ) { padding ->
-        // Box con fillMaxSize asegura que el área de contenido ocupe todo el espacio
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (!isCarreraSelected) {
                 Column {
-                    // Selector de Tipo (TSU / ING)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -164,7 +162,6 @@ fun AdminAlumnosScreen(
                     }
                 }
             } else if (!isGrupoSelected) {
-                // Vista de Grupos - Asegurando que LazyColumn llene el espacio para permitir scroll
                 val groupedGrupos = uiState.grupos.groupBy { grupo ->
                     val name = grupo.nombre ?: ""
                     val cuatriNum = name.takeWhile { it.isDigit() }
@@ -261,7 +258,6 @@ fun AdminAlumnosScreen(
                     }
                 }
             } else {
-                // Vista de Lista de Alumnos - Scroll activo por LazyColumn
                 Column(Modifier.fillMaxSize()) {
                     Text(
                         text = uiState.selectedGrupo?.nombre ?: "",
@@ -284,10 +280,14 @@ fun AdminAlumnosScreen(
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                            modifier = Modifier.fillMaxSize() // Asegurar que ocupa todo el espacio
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             items(uiState.alumnos, key = { it.id }) { alumno ->
-                                AlumnoListItemStyled(alumno = alumno, onClick = { onEdit(alumno.id) })
+                                AlumnoListItemStyled(
+                                    alumno = alumno, 
+                                    onEdit = { onEdit(alumno.id) },
+                                    onDelete = { vm.deleteAlumno(alumno.id) }
+                                )
                             }
                         }
                     }
@@ -384,7 +384,13 @@ private fun getIconForCarreraAlumnos(nombre: String): Pair<ImageVector, Color> {
 }
 
 @Composable
-private fun AlumnoListItemStyled(alumno: Alumno, onClick: () -> Unit) {
+private fun AlumnoListItemStyled(
+    alumno: Alumno, 
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val initials = alumno.nombre?.split(" ")?.filter { it.isNotBlank() }?.take(2)?.mapNotNull { it.firstOrNull()?.uppercase() }?.joinToString("") ?: "?"
     
     val avatarBg = when (initials.firstOrNull()) {
@@ -400,8 +406,29 @@ private fun AlumnoListItemStyled(alumno: Alumno, onClick: () -> Unit) {
         else -> Color(0xFFE31B54)
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar Alumno") },
+            text = { Text("¿Estás seguro de que deseas eliminar a ${alumno.nombre}? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    onDelete()
+                    showDeleteDialog = false 
+                }) {
+                    Text("Eliminar", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFFF2F4F7))
@@ -421,10 +448,28 @@ private fun AlumnoListItemStyled(alumno: Alumno, onClick: () -> Unit) {
                 Text(alumno.nombre ?: "", fontWeight = FontWeight.Bold, color = Color(0xFF1D2939), fontSize = 16.sp)
                 Text("ID: ${alumno.matricula ?: ""}", color = Color(0xFF667085), fontSize = 13.sp)
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar", tint = Color(0xFFD0D5DD), modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.Default.MoreVert, contentDescription = "Más", tint = Color(0xFFD0D5DD), modifier = Modifier.size(20.dp))
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones", tint = Color(0xFFD0D5DD))
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Editar") },
+                        onClick = {
+                            onEdit()
+                            showMenu = false
+                        },
+                        leadingIcon = { Icon(Icons.Default.Edit, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Eliminar", color = Color.Red) },
+                        onClick = {
+                            showDeleteDialog = true
+                            showMenu = false
+                        },
+                        leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+                    )
+                }
             }
         }
     }

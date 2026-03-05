@@ -5,39 +5,43 @@ plugins {
 }
 
 android {
-    namespace 'com.example.univapp'
-    compileSdk 34
+    namespace = 'com.example.univapp'
+    compileSdk = 34
 
     defaultConfig {
-        applicationId 'com.example.univapp'
-        minSdk 26
-        targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        applicationId = 'com.example.univapp'
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = '1.0'
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug { 
-            minifyEnabled false 
+            minifyEnabled = false 
         }
     }
 
-    buildFeatures { compose true }
+    buildFeatures {
+        compose = true
+    }
 
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.14'
+        kotlinCompilerExtensionVersion = '1.5.14'
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-        coreLibraryDesugaringEnabled true
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled = true
     }
-    kotlinOptions { jvmTarget = '17' }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
 
     packaging {
         jniLibs {
