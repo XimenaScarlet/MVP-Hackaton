@@ -9,13 +9,13 @@
 
     <application
         android:name=".UnivAppApplication"
-        android:label="UnivApp"
+        android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.UnivApp">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="@string/google_maps_key" />
+            android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"

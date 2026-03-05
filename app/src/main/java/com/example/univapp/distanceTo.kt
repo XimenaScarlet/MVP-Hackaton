@@ -1,15 +1,31 @@
 package com.example.univapp
 
 import com.google.android.gms.maps.model.LatLng
+import kotlin.math.*
 
-/** Util simple de distancia Haversine (metros). */
+/**
+ * Utilidad optimizada para calcular la distancia entre dos puntos (Haversine) en metros.
+ * Se utiliza kotlin.math para mejor rendimiento e idiomaticidad en Kotlin.
+ */
 fun LatLng.distanceToMeters(b: LatLng): Double {
-    val R = 6371000.0
-    val dLat = Math.toRadians(b.latitude - latitude)
-    val dLng = Math.toRadians(b.longitude - longitude)
-    val s1 = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(Math.toRadians(latitude)) *
-            Math.cos(Math.toRadians(b.latitude)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2)
-    return 2 * R * Math.asin(Math.sqrt(s1))
+    val r = 6371000.0 // Radio de la Tierra en metros
+
+    val lat1Rad = latitude.toRadians()
+    val lat2Rad = b.latitude.toRadians()
+    val deltaLat = (b.latitude - latitude).toRadians()
+    val deltaLng = (b.longitude - longitude).toRadians()
+
+    // Optimizamos calculando el seno una sola vez
+    val sinDeltaLat = sin(deltaLat / 2)
+    val sinDeltaLng = sin(deltaLng / 2)
+
+    val a = sinDeltaLat * sinDeltaLat +
+            cos(lat1Rad) * cos(lat2Rad) *
+            sinDeltaLng * sinDeltaLng
+
+    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return r * c
 }
+
+private fun Double.toRadians(): Double = Math.toRadians(this)
