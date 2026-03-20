@@ -2,6 +2,7 @@ package com.example.univapp.ui.admin
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.Profesor
@@ -90,12 +91,18 @@ class AdminImportProfesoresViewModel(application: Application) : AndroidViewMode
                         processedCount += chunk.size
                     }
 
-                    ImportResult(processedCount, errors)
+                    ImportResult(
+                        totalProcessed = processedCount,
+                        createdInAuth = 0,
+                        existingInAuth = 0,
+                        rowErrors = errors
+                    )
                 }
 
-                _importState.value = ImportState.Success(result.count, result.rowErrors)
+                _importState.value = ImportState.Success(result)
 
             } catch (t: Throwable) {
+                Log.e("ImportProfesores", "Error", t)
                 _importState.value = ImportState.Error(t.localizedMessage ?: "Error desconocido.")
             }
         }

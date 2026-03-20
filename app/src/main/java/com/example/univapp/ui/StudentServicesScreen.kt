@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
 
 @Composable
 fun StudentServicesScreen(
@@ -35,7 +36,6 @@ fun StudentServicesScreen(
 ) {
     val isDarkMode by settingsVm.darkMode.collectAsState()
 
-    // Dynamic Colors
     val bgColor = if (isDarkMode) Color(0xFF0F172A) else Color(0xFFF8F9FB)
     val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color.White
     val titleColor = if (isDarkMode) Color.White else Color(0xFF1A1C1E)
@@ -49,11 +49,13 @@ fun StudentServicesScreen(
     val item4 = ServiceItem("Credencial Digital", "Ver identificación", Icons.Default.Badge, onOpenDigitalID)
     val itemCenter = ServiceItem("Documentos", "Descargas PDF", Icons.Default.Folder, onOpenDocuments)
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    AppScaffold { pv ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bgColor)
+                .padding(pv)
+        ) {
             // Header
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -76,7 +78,6 @@ fun StudentServicesScreen(
                 }
             }
 
-            // Contenedor centrado verticalmente
             Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center
@@ -88,7 +89,6 @@ fun StudentServicesScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Fila 1
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             ServiceCard(item1, cardBg, titleColor, subtitleColor, iconBoxColor, iconTintColor)
@@ -98,7 +98,6 @@ fun StudentServicesScreen(
                         }
                     }
                     
-                    // Fila 2
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             ServiceCard(item3, cardBg, titleColor, subtitleColor, iconBoxColor, iconTintColor)
@@ -108,7 +107,6 @@ fun StudentServicesScreen(
                         }
                     }
 
-                    // Fila 3: Documentos centrado (50% del ancho)
                     Box(modifier = Modifier.fillMaxWidth(0.5f)) {
                         ServiceCard(itemCenter, cardBg, titleColor, subtitleColor, iconBoxColor, iconTintColor)
                     }

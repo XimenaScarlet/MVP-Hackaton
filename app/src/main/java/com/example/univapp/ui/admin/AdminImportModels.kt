@@ -1,10 +1,17 @@
 package com.example.univapp.ui.admin
 
-data class ImportResult(val count: Int, val rowErrors: List<String>)
+data class ImportResult(
+    val totalProcessed: Int,
+    val createdInAuth: Int = 0,
+    val existingInAuth: Int = 0,
+    val authFailed: Int = 0,
+    val skippedFirestore: Int = 0,
+    val rowErrors: List<String>
+)
 
 sealed class ImportState {
     object Idle : ImportState()
     object Loading : ImportState()
-    data class Success(val count: Int, val errors: List<String> = emptyList()) : ImportState()
+    data class Success(val result: ImportResult) : ImportState()
     data class Error(val message: String) : ImportState()
 }

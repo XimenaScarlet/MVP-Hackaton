@@ -1,188 +1,243 @@
 package com.example.univapp.ui.admin
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.univapp.data.Carrera
-import com.example.univapp.data.Grupo
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminAddAlumnoScreen(
+    carreraId: String,
+    groupId: String,
     onBack: () -> Unit,
-    vm: AdminAddAlumnoViewModel = viewModel()
+    vm: AdminAddAlumnoViewModel = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
     var matricula by remember { mutableStateOf("") }
-    var semestre by remember { mutableStateOf("") }
     var nombre by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var genero by remember { mutableStateOf<String?>(null) }
-    var edad by remember { mutableStateOf("") }
     var fechaNacimiento by remember { mutableStateOf("") }
-    var selectedCarrera by remember { mutableStateOf<Carrera?>(null) }
-    var selectedGrupo by remember { mutableStateOf<Grupo?>(null) }
-    var estatus by remember { mutableStateOf("Activo") }
     var telefono by remember { mutableStateOf("") }
     var direccion by remember { mutableStateOf("") }
 
-    var isCarreraExpanded by remember { mutableStateOf(false) }
-    var isGrupoExpanded by remember { mutableStateOf(false) }
     var isGeneroExpanded by remember { mutableStateOf(false) }
-    var isEstatusExpanded by remember { mutableStateOf(false) }
+    var isContactVisible by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.onSaveSuccess) {
-        if (uiState.onSaveSuccess) {
-            onBack()
+    val teal = Color(0xFF0F6C6D)
+    val localeSpanish = Locale("es", "ES")
+
+    val isOldEnough = remember(fechaNacimiento) {
+        if (fechaNacimiento.isBlank()) false
+        else {
+            try {
+                val sdf = SimpleDateFormat("dd/MM/yyyy", localeSpanish)
+                val birthDate = sdf.parse(fechaNacimiento) ?: return@remember false
+                val today = Calendar.getInstance()
+                val birth = Calendar.getInstance().apply { time = birthDate }
+                var age = today.get(Calendar.YEAR) - birth.get(Calendar.YEAR)
+                if (today.get(Calendar.DAY_OF_YEAR) < birth.get(Calendar.DAY_OF_YEAR)) age--
+                age >= 15
+            } catch (e: Exception) { false }
         }
     }
 
-    // Auto-generate email from matricula
+    LaunchedEffect(uiState.onSaveSuccess) {
+        if (uiState.onSaveSuccess) onBack()
+    }
+
     LaunchedEffect(matricula) {
-        email = if (matricula.isNotBlank()) "$matricula@uts.edu.mx" else ""
+        email = if (matricula.isNotBlank()) "$matricula@alumno.utc.edu.mx" else ""
     }
 
-    // Auto-generate semestre from grupo
-    LaunchedEffect(selectedGrupo) {
-        semestre = selectedGrupo?.nombre?.firstOrNull { it.isDigit() }?.toString() ?: ""
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        val sdf = SimpleDateFormat("dd/MM/yyyy", localeSpanish)
+                        fechaNacimiento = sdf.format(Date(it))
+                    }
+                    showDatePicker = false
+                }) { Text("ACEPTAR", color = teal, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("CANCELAR", color = Color.Gray) }
+            },
+            shape = RoundedCornerShape(32.dp)
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = teal,
+                    todayContentColor = teal,
+                    headlineContentColor = teal
+                )
+            )
+        }
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Agregar Alumno") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFF7F7FB))
+            CenterAlignedTopAppBar(
+                title = { Text("Nuevo Estudiante", fontWeight = FontWeight.ExtraBold, color = teal) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = teal) } },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
         bottomBar = {
-            val canSave = matricula.isNotBlank() && nombre.isNotBlank() && selectedCarrera != null && selectedGrupo != null && genero != null
+            val canSave = matricula.isNotBlank() && nombre.isNotBlank() && genero != null && isOldEnough
             Surface(shadowElevation = 8.dp) {
-                Button(
-                    onClick = {
-                        vm.saveAlumno(
-                            matricula = matricula,
-                            nombre = nombre,
-                            carreraId = selectedCarrera!!.id, // Carrera is selected from dropdown
-                            grupoId = selectedGrupo!!.id,     // Grupo is selected from dropdown
-                            genero = genero!!,
-                            estatus = estatus
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 24.dp)
-                        .height(50.dp),
-                    enabled = canSave,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("Guardar Alumno", fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (fechaNacimiento.isNotBlank() && !isOldEnough) {
+                        Text("El alumno debe ser mayor de 15 años.", color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    }
+                    Button(
+                        onClick = {
+                            vm.saveAlumno(matricula, nombre, carreraId, groupId, genero!!, fechaNacimiento, email, telefono, direccion)
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
+                        enabled = canSave && !uiState.isLoading,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = teal)
+                    ) {
+                        if (uiState.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        else {
+                            Icon(Icons.Default.Save, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Guardar Registro", fontSize = 16.sp)
+                        }
+                    }
                 }
             }
-        },
-        containerColor = Color(0xFFF7F7FB)
+        }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            modifier = Modifier.padding(padding).fillMaxSize(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item { ProfilePicture() }
 
-            // --- Basic Info ---
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedTextField(value = matricula, onValueChange = { matricula = it }, label = { Text("Matrícula") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = semestre, onValueChange = {}, readOnly = true, label = { Text("Semestre") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface))
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ValidatedTextField(
+                            value = matricula,
+                            onValueChange = { matricula = it },
+                            label = "Matrícula",
+                            maxLength = 15,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                        )
+                        ValidatedTextField(
+                            value = nombre,
+                            onValueChange = { nombre = it },
+                            label = "Nombre Completo",
+                            maxLength = 70
+                        )
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Correo Institucional", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                            leadingIcon = { Icon(Icons.Default.Email, null, tint = teal) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            textStyle = TextStyle(textAlign = TextAlign.Center),
+                            colors = OutlinedTextFieldDefaults.colors(disabledTextColor = Color.Black)
+                        )
+                    }
                 }
             }
-            item { OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre Completo") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) }
-            item { OutlinedTextField(value = email, onValueChange = {}, readOnly = true, label = { Text("Correo Electrónico") }, leadingIcon = { Icon(Icons.Default.Email, null) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface)) }
-            
-            // --- Personal Data Section ---
-            item { 
-                Section(title = "DATOS PERSONALES") {
-                    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)){
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)){
-                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                DropdownSelector(label = "Género", options = listOf("Masculino", "Femenino"), selectedOption = genero, onOptionSelected = { genero = it }, modifier = Modifier.weight(1f), expanded = isGeneroExpanded, onExpandedChange = { isGeneroExpanded = it })
-                                OutlinedTextField(value = edad, onValueChange = { edad = it }, label = { Text("Edad") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+
+            item {
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DropdownSelector(
+                            label = "Género",
+                            options = listOf("Masculino", "Femenino", "Otro"),
+                            selectedOption = genero,
+                            onOptionSelected = { genero = it },
+                            modifier = Modifier.weight(1f),
+                            expanded = isGeneroExpanded,
+                            onExpandedChange = { isGeneroExpanded = it }
+                        )
+                        Box(modifier = Modifier.weight(1.2f).clickable { showDatePicker = true }) {
+                            OutlinedTextField(
+                                value = if (fechaNacimiento.isEmpty()) "Seleccionar" else fechaNacimiento,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("F. Nacimiento", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = false,
+                                shape = RoundedCornerShape(12.dp),
+                                textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = if (fechaNacimiento.isEmpty()) 12.sp else 16.sp),
+                                trailingIcon = { Icon(Icons.Default.CalendarToday, null, tint = teal) },
+                                colors = OutlinedTextFieldDefaults.colors(disabledTextColor = Color.Black)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(modifier = Modifier.fillMaxWidth().clickable { isContactVisible = !isContactVisible }.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Icon(Icons.Default.ContactPhone, null, tint = teal)
+                            Spacer(Modifier.width(12.dp))
+                            Text("Información de Contacto", fontWeight = FontWeight.Bold)
+                            Icon(if (isContactVisible) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+                        }
+                        AnimatedVisibility(visible = isContactVisible) {
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                ValidatedTextField(
+                                    value = telefono,
+                                    onValueChange = { telefono = it },
+                                    label = "Teléfono",
+                                    maxLength = 10,
+                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone)
+                                )
+                                ValidatedTextField(
+                                    value = direccion,
+                                    onValueChange = { direccion = it },
+                                    label = "Dirección",
+                                    maxLength = 100
+                                )
                             }
-                            OutlinedTextField(value = fechaNacimiento, onValueChange = { fechaNacimiento = it }, label = { Text("Fecha de Nacimiento") }, placeholder = { Text("mm/dd/yyyy") }, trailingIcon = { Icon(Icons.Default.DateRange, null) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
                         }
                     }
                 }
             }
-
-            // --- Academic Section ---
-            item {
-                Section(title = "ACADÉMICO") {
-                     DropdownSelector(label = "Carrera", options = uiState.carreras.mapNotNull { it.nombre }, selectedOption = selectedCarrera?.nombre, onOptionSelected = {
-                        val carrera = uiState.carreras.find { c -> c.nombre == it }
-                        if (carrera != null) {
-                            selectedCarrera = carrera
-                            selectedGrupo = null // Reset group selection
-                            vm.onCarreraSelected(carrera.id)
-                        }
-                    }, expanded = isCarreraExpanded, onExpandedChange = { isCarreraExpanded = it })
-                    
-                    Spacer(Modifier.height(16.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)){
-                        DropdownSelector(label = "Grupo", options = uiState.grupos.mapNotNull { it.nombre }, selectedOption = selectedGrupo?.nombre, onOptionSelected = {
-                            selectedGrupo = uiState.grupos.find { g -> g.nombre == it }
-                        }, modifier = Modifier.weight(1f), enabled = selectedCarrera != null, expanded = isGrupoExpanded, onExpandedChange = { isGrupoExpanded = it })
-                        
-                        DropdownSelector(label = "Estatus Académico", options = listOf("Activo", "Inactivo", "Graduado"), selectedOption = estatus, onOptionSelected = { estatus = it }, modifier = Modifier.weight(1f), expanded = isEstatusExpanded, onExpandedChange = { isEstatusExpanded = it })
-                    }
-                }
-            }
-
-            // --- Optional Contact Section ---
-            item {
-                Section(title = "CONTACTO (OPCIONAL)") {
-                    OutlinedTextField(value = telefono, onValueChange = { telefono = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = direccion, onValueChange = { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-                }
-            }
-
-            // --- Loading/Error State ---
-            if (uiState.isLoading && !uiState.onSaveSuccess) {
-                item { Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-            }
-            uiState.error?.let { item { Text(it, color = Color.Red, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(16.dp)) } }
+            uiState.error?.let { item { Text(it, color = Color.Red, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) } }
         }
     }
 }
@@ -191,26 +246,11 @@ fun AdminAddAlumnoScreen(
 private fun ProfilePicture() {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()){
         Box(contentAlignment = Alignment.Center) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray.copy(alpha = 0.3f))
-                    .border(1.dp, Color.LightGray.copy(alpha = 0.5f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray.copy(alpha=0.8f), modifier = Modifier.size(50.dp))
+            Box(modifier = Modifier.size(110.dp).clip(CircleShape).background(Color(0xFFE0E0E0)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Person, null, tint = Color.Gray, modifier = Modifier.size(60.dp))
             }
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .border(2.dp, Color.White, CircleShape)
-                    .align(Alignment.BottomEnd)
-                    .clickable { /* TODO: Implement image picker */ }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar foto", tint = Color.White, modifier = Modifier.align(Alignment.Center))
+            IconButton(onClick = { }, modifier = Modifier.size(36.dp).align(Alignment.BottomEnd).clip(CircleShape).background(Color(0xFF0F6C6D))) {
+                Icon(Icons.Default.CameraAlt, null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -218,47 +258,14 @@ private fun ProfilePicture() {
     }
 }
 
-@Composable
-private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
-        content()
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DropdownSelector(
-    label: String,
-    options: List<String>,
-    selectedOption: String?,
-    onOptionSelected: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit
-) {
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if(enabled) onExpandedChange(it) }, modifier = modifier) {
-        OutlinedTextField(
-            value = selectedOption ?: "Seleccionar",
-            onValueChange = {},
-            label = { Text(label) },
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(),
-            enabled = enabled,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-        )
+private fun DropdownSelector(label: String, options: List<String>, selectedOption: String?, onOptionSelected: (String) -> Unit, modifier: Modifier = Modifier, expanded: Boolean, onExpandedChange: (Boolean) -> Unit) {
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { onExpandedChange(it) }, modifier = modifier) {
+        OutlinedTextField(value = selectedOption ?: "Seleccionar", onValueChange = {}, label = { Text(label, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }, readOnly = true, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }, modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp), textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = if (selectedOption == null) 12.sp else 16.sp), colors = OutlinedTextFieldDefaults.colors(disabledTextColor = Color.Black))
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
             options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onOptionSelected(option)
-                        onExpandedChange(false)
-                    }
-                )
+                DropdownMenuItem(text = { Text(option, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }, onClick = { onOptionSelected(option); onExpandedChange(false) })
             }
         }
     }

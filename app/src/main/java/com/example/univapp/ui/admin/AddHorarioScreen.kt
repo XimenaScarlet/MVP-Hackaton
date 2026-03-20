@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Materia
 import com.example.univapp.data.Profesor
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,8 +67,7 @@ fun AddHorarioScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color.White,
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Agregar Clase", fontWeight = FontWeight.Bold) },
@@ -130,20 +131,13 @@ fun AddHorarioScreen(
                 // Materia
                 Text("MATERIA", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
+                ValidatedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Buscar materia o código...") },
+                    label = "Buscar materia o código...",
+                    maxLength = 50,
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF7F7F9),
-                        focusedContainerColor = Color(0xFFF7F7F9),
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color(0xFF673AB7)
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
                 
                 Spacer(Modifier.height(8.dp))
@@ -184,20 +178,13 @@ fun AddHorarioScreen(
                 Spacer(Modifier.height(24.dp))
                 Text("SALÓN / UBICACIÓN", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
+                ValidatedTextField(
                     value = salon,
                     onValueChange = { salon = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Lab. de Computación 3") },
+                    label = "Ej. Lab. de Computación 3",
+                    maxLength = 30,
                     leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = Color.Gray) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color(0xFFF7F7F9),
-                        focusedContainerColor = Color(0xFFF7F7F9),
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color(0xFF673AB7)
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Profesor
@@ -289,19 +276,13 @@ fun TimePicker(label: String, time: String, onTimeChange: (String) -> Unit, modi
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
+        ValidatedTextField(
             value = time,
             onValueChange = onTimeChange,
-            modifier = Modifier.fillMaxWidth(),
+            label = "07:00",
+            maxLength = 5,
             leadingIcon = { Icon(Icons.Default.Schedule, null, tint = Color.Gray) },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color(0xFFF7F7F9),
-                focusedContainerColor = Color(0xFFF7F7F9),
-                unfocusedBorderColor = Color.Transparent,
-                focusedBorderColor = Color(0xFF673AB7)
-            )
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }

@@ -17,7 +17,6 @@ import com.example.univapp.data.LocalStore
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.toObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -95,7 +94,8 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
                     }
                 }
                 if (doc.exists()) {
-                    _studentData.value = doc.toObject<Alumno>()?.copy(id = doc.id)
+                    // Se corrige deprecación de toObject
+                    _studentData.value = doc.toObject(Alumno::class.java)?.copy(id = doc.id)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -216,7 +216,6 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
                     createdAtMillis = now
                 )
                 
-                // Guardado optimista local
                 val updatedReqs = (listOf(newRequest) + _allRequests.value).distinctBy { it.folio.ifBlank { it.id } }
                 _allRequests.value = updatedReqs
                 localStore.saveRequests(updatedReqs)
@@ -239,84 +238,12 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
                     }
                 }
 
-                // Guardado en Firestore
                 val requestMap = hashMapOf(
                     "userId" to user.uid,
                     "alumnoNombre" to (student?.nombre ?: user.email ?: "Estudiante"),
                     "titulo" to title,
                     "tipo" to (if (tipoSimple) "Simple" else "Con calificaciones"),
                     "uso" to uso,
-                    "entrega" to (if (isDigital) "Digital" else "Ventanilla"),
-                    "folio" to folio,
-                    "fileName" to fileName,
-                    "status" to (if (isDigital) "COMPLETADO" else "PENDIENTE"),
-                    "areaDestino" to "escolares",
-                    "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
-                )
-                db.collection("tramites").add(requestMap).await()
-                loadAllRequests()
-
-                _loading.value = false
-                onSuccess(isDigital)
-            } catch (e: Exception) {
-                _loading.value = false
-                onSuccess(isDigital)
-            }
-        }
-    }
-
-    fun requestKardex(motivo: String, isDigital: Boolean, onSuccess: (Boolean) -> Unit) {
-        val user = auth.currentUser ?: return
-        val student = _studentData.value
-        val now = System.currentTimeMillis()
-        
-        viewModelScope.launch {
-            _loading.value = true
-            try {
-                val folio = "KAR-${Calendar.getInstance().get(Calendar.YEAR)}-${(1000..9999).random()}"
-                val title = "Kardex Oficial"
-                val fileName = "Kardex_${folio}.pdf"
-                
-                val dateFormatted = SimpleDateFormat("dd MMM yyyy", Locale("es", "MX")).format(Date(now))
-                val newRequest = RequestRecord(
-                    id = UUID.randomUUID().toString(),
-                    title = title,
-                    folio = folio,
-                    date = dateFormatted,
-                    status = if (isDigital) "COMPLETADO" else "PENDIENTE",
-                    tipo = "Oficial",
-                    entrega = if (isDigital) "Digital" else "Ventanilla",
-                    createdAtMillis = now
-                )
-                
-                val updatedReqs = (listOf(newRequest) + _allRequests.value).distinctBy { it.folio.ifBlank { it.id } }
-                _allRequests.value = updatedReqs
-                localStore.saveRequests(updatedReqs)
-
-                if (isDigital) {
-                    val saved = generateAndSaveKardexPdfLocally(student, folio, motivo, fileName)
-                    if (saved) {
-                        val newDoc = DocumentRecord(
-                            id = newRequest.id,
-                            title = title,
-                            date = "Emitido: $dateFormatted",
-                            folio = folio,
-                            tipo = "Oficial",
-                            fileName = fileName,
-                            createdAtMillis = now
-                        )
-                        val updatedDocs = (listOf(newDoc) + _digitalDocuments.value).distinctBy { it.folio.ifBlank { it.id } }
-                        _digitalDocuments.value = updatedDocs
-                        localStore.saveDocuments(updatedDocs)
-                    }
-                }
-
-                val requestMap = hashMapOf(
-                    "userId" to user.uid,
-                    "alumnoNombre" to (student?.nombre ?: user.email ?: "Estudiante"),
-                    "titulo" to title,
-                    "motivo" to motivo,
-                    "tipo" to "Oficial",
                     "entrega" to (if (isDigital) "Digital" else "Ventanilla"),
                     "folio" to folio,
                     "fileName" to fileName,
@@ -542,65 +469,6 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
-    private fun generateAndSaveKardexPdfLocally(student: Alumno?, folio: String, motivo: String, fileName: String): Boolean {
-        val pdfDocument = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
-        val paint = Paint()
-        val studentName = student?.nombre ?: "ESTUDIANTE"
-        val matricula = student?.matricula ?: "N/A"
-        val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-
-        paint.color = Color.BLACK
-        paint.textSize = 22f
-        paint.isFakeBoldText = true
-        canvas.drawText("UNIVERSIDAD TECNOLÓGICA DE COAHUILA", 80f, 80f, paint)
-        paint.textSize = 14f
-        paint.isFakeBoldText = false
-        canvas.drawText("HISTORIAL ACADÉMICO (KARDEX)", 180f, 110f, paint)
-        
-        paint.textSize = 12f
-        canvas.drawText("NOMBRE: $studentName", 50f, 160f, paint)
-        canvas.drawText("MATRÍCULA: $matricula", 50f, 180f, paint)
-        canvas.drawText("FECHA DE EMISIÓN: $date", 50f, 200f, paint)
-        canvas.drawText("MOTIVO: $motivo", 50f, 220f, paint)
-
-        paint.isFakeBoldText = true
-        canvas.drawText("MATERIA", 50f, 270f, paint)
-        canvas.drawText("CALIFICACIÓN", 450f, 270f, paint)
-        paint.isFakeBoldText = false
-        
-        val materias = listOf("Matemáticas" to "95", "Programación" to "100", "Base de Datos" to "88", "Inglés IV" to "92", "Física" to "85")
-        var y = 300f
-        materias.forEach { (m, c) ->
-            canvas.drawText(m, 50f, y, paint)
-            canvas.drawText(c, 450f, y, paint)
-            y += 25f
-        }
-
-        paint.isFakeBoldText = true
-        canvas.drawText("PROMEDIO GENERAL: 92.0", 50f, y + 20f, paint)
-
-        paint.textSize = 10f
-        paint.color = Color.DKGRAY
-        canvas.drawText("Folio de Validación: $folio", 50f, 750f, paint)
-        canvas.drawText("Este documento es una version oficial digital para uso interno.", 50f, 770f, paint)
-
-        pdfDocument.finishPage(page)
-        return try {
-            val docDir = getApplication<Application>().getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
-            val file = File(docDir, fileName)
-            pdfDocument.writeTo(FileOutputStream(file))
-            pdfDocument.close()
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            pdfDocument.close()
-            false
-        }
-    }
-
     fun openDocument(record: DocumentRecord) {
         val context = getApplication<Application>()
         val docDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
@@ -621,11 +489,7 @@ class StudentProceduresViewModel(application: Application) : AndroidViewModel(ap
         } else {
             Toast.makeText(context, "Re-generando documento...", Toast.LENGTH_SHORT).show()
             viewModelScope.launch {
-                val saved = if (record.title.contains("Kardex")) {
-                    generateAndSaveKardexPdfLocally(_studentData.value, record.folio, "Reposición", record.fileName)
-                } else {
-                    generateAndSavePdfLocally(_studentData.value, record.folio, record.tipo == "Simple", record.title, record.fileName)
-                }
+                val saved = generateAndSavePdfLocally(_studentData.value, record.folio, record.tipo == "Simple", record.title, record.fileName)
                 if (saved) openDocument(record)
             }
         }

@@ -4,34 +4,24 @@ package com.example.univapp.ui.nav
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.univapp.location.LocationHelper
 import com.example.univapp.navigation.Routes
 import com.example.univapp.ui.*
 import com.example.univapp.ui.admin.*
-import com.example.univapp.ui.routesel.RoutesSelectorScreen
-import kotlinx.coroutines.launch
+import com.example.univapp.ui.routes.RoutesSelectorScreen
 
 @Composable
-fun AppNavHost(
-    authVM: AuthViewModel = viewModel(),
-    adminGruposViewModel: AdminGruposViewModel = viewModel()
-) {
+fun AppNavHost() {
     val nav = rememberNavController()
+    val authVM: AuthViewModel = hiltViewModel()
+    
     val user by authVM.user.collectAsState()
     val offlineSession by authVM.offlineSession.collectAsState()
     val isAdmin by authVM.isAdmin.collectAsState()
@@ -39,20 +29,6 @@ fun AppNavHost(
     val authError by authVM.error.collectAsState()
     val context = LocalContext.current
 
-    // --- SHARED VIEWMODELS ---
-    val locationHelper = remember { LocationHelper(context) }
-    val sosViewModel: SOSViewModel = viewModel(factory = object : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SOSViewModel(locationHelper) as T
-        }
-    })
-    
-    // SINCRONIZAR SESIÓN CON SOS
-    LaunchedEffect(user, offlineSession) {
-        sosViewModel.setOfflineSession(offlineSession)
-    }
-
-    // CONTROL DE NAVEGACIÓN GLOBAL (LOGOUT)
     LaunchedEffect(isLoggedIn) {
         if (!isLoggedIn) {
             nav.navigate(Routes.LOGIN) {
@@ -60,13 +36,6 @@ fun AppNavHost(
             }
         }
     }
-
-    val adminSosViewModel: AdminSosViewModel = viewModel()
-    val proceduresVM: StudentProceduresViewModel = viewModel()
-    val healthVM: HealthViewModel = viewModel()
-    val medicalVm: MedicalAppointmentViewModel = viewModel()
-    val settingsVM: SettingsViewModel = viewModel()
-    // -----------------------
 
     NavHost(navController = nav, startDestination = Routes.LOGIN) {
 
@@ -78,7 +47,6 @@ fun AppNavHost(
                 onDismissError = { authVM.clearError() }
             )
 
-            // Redirección al entrar si ya está logueado
             LaunchedEffect(isLoggedIn, isAdmin) {
                 if (isLoggedIn && isAdmin != null) {
                     val target = if (isAdmin == true) Routes.ADMIN_HOME else Routes.HOME
@@ -90,6 +58,7 @@ fun AppNavHost(
         }
 
         composable(Routes.HOME) {
+            val settingsVM: SettingsViewModel = hiltViewModel()
             val displayName = (user?.email ?: offlineSession?.email ?: "Alumno").substringBefore("@")
             HomeScreen(
                 userName = displayName,
@@ -120,7 +89,8 @@ fun AppNavHost(
         }
         
         composable(Routes.ADMIN_SOS_MAP) {
-            AdminSosMapScreen(viewModel = adminSosViewModel, onBack = { nav.popBackStack() })
+            val vm: AdminSosViewModel = hiltViewModel()
+            AdminSosMapScreen(viewModel = vm, onBack = { nav.popBackStack() })
         }
 
         composable(Routes.ADMIN_ANNOUNCEMENTS) { AdminAnnouncementsScreen(onBack = { nav.popBackStack() }) }
@@ -129,13 +99,15 @@ fun AppNavHost(
             AdminAlumnosScreen(
                 onBack = { nav.popBackStack() },
                 onEdit = { id -> nav.navigate(Routes.ADMIN_EDIT_ALUMNO.replace("{alumnoId}", id)) },
-                onAddManually = { nav.navigate(Routes.ADMIN_ADD_ALUMNO) },
+                onAddManually = { cid, gid -> 
+                    nav.navigate(Routes.ADMIN_ADD_ALUMNO.replace("{carreraId}", cid).replace("{groupId}", gid)) 
+                },
                 onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_ALUMNOS) }
             )
         }
 
         composable(Routes.ADMIN_MATERIAS) {
-            val vm: AdminMateriasViewModel = viewModel()
+            val vm: AdminMateriasViewModel = hiltViewModel()
             val uiState by vm.uiState.collectAsState()
             AdminMateriasScreen(
                 onBack = { nav.popBackStack() },
@@ -151,7 +123,8 @@ fun AppNavHost(
         }
 
         composable(Routes.ADMIN_GRUPOS) {
-            val uiState by adminGruposViewModel.uiState.collectAsState()
+            val vm: AdminGruposViewModel = hiltViewModel()
+            val uiState by vm.uiState.collectAsState()
             AdminGruposScreen(
                 onBack = { nav.popBackStack() },
                 onGroupClick = { id -> nav.navigate(Routes.ADMIN_GROUP_DETAIL.replace("{groupId}", id)) },
@@ -159,14 +132,14 @@ fun AppNavHost(
                     val c = uiState.selectedCarrera?.id ?: return@AdminGruposScreen
                     nav.navigate(Routes.ADMIN_ADD_GROUP_DETAILS.replace("{carreraId}", c))
                 },
-                onImportExcel = { },
+                onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_GRUPOS) },
                 uiState = uiState,
-                onCarreraSelected = { adminGruposViewModel.onCarreraSelected(it) }
+                onCarreraSelected = { vm.onCarreraSelected(it) }
             )
         }
 
-        composable(Routes.ADMIN_PROFESORES) { backStackEntry ->
-            val vm: AdminProfesoresViewModel = viewModel(backStackEntry)
+        composable(Routes.ADMIN_PROFESORES) {
+            val vm: AdminProfesoresViewModel = hiltViewModel()
             val uiState by vm.uiState.collectAsState()
             AdminProfesoresScreen(
                 onBack = { nav.popBackStack() },
@@ -174,13 +147,13 @@ fun AppNavHost(
                     val c = uiState.selectedCarrera?.id ?: return@AdminProfesoresScreen
                     nav.navigate(Routes.ADMIN_ADD_PROFESOR.replace("{carreraId}", c))
                 },
-                onImportExcel = { },
+                onImportExcel = { nav.navigate(Routes.ADMIN_IMPORT_PROFESORES) },
                 vm = vm
             )
         }
 
         composable(Routes.ADMIN_HORARIOS) {
-            val vm: AdminHorariosViewModel = viewModel()
+            val vm: AdminHorariosViewModel = hiltViewModel()
             val uiState by vm.uiState.collectAsState()
             AdminHorariosScreen(
                 onBack = { nav.popBackStack() },
@@ -197,7 +170,24 @@ fun AppNavHost(
         composable(Routes.ADMIN_ACTIVITY) { AdminActivityScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_IMPORT_ALUMNOS) { ImportAlumnosScreen(onBack = { nav.popBackStack() }) }
         composable(Routes.ADMIN_IMPORT_MATERIAS) { ImportMateriasScreen(onBack = { nav.popBackStack() }) }
-        composable(Routes.ADMIN_ADD_ALUMNO) { AdminAddAlumnoScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.ADMIN_IMPORT_PROFESORES) { ImportProfesoresScreen(onBack = { nav.popBackStack() }) }
+        composable(Routes.ADMIN_IMPORT_GRUPOS) { ImportGruposScreen(onBack = { nav.popBackStack() }) }
+        
+        composable(
+            route = Routes.ADMIN_ADD_ALUMNO,
+            arguments = listOf(
+                navArgument("carreraId") { type = NavType.StringType },
+                navArgument("groupId") { type = NavType.StringType }
+            )
+        ) { back ->
+            val cId = back.arguments?.getString("carreraId") ?: ""
+            val gId = back.arguments?.getString("groupId") ?: ""
+            AdminAddAlumnoScreen(
+                carreraId = cId,
+                groupId = gId,
+                onBack = { nav.popBackStack() }
+            )
+        }
 
         composable(
             route = Routes.ADMIN_EDIT_ALUMNO,
@@ -236,7 +226,13 @@ fun AppNavHost(
             arguments = listOf(navArgument("groupId") { type = NavType.StringType })
         ) { back ->
             val id = back.arguments?.getString("groupId") ?: ""
-            AdminGroupDetailScreen(groupId = id, onBack = { nav.popBackStack() })
+            AdminGroupDetailScreen(
+                groupId = id, 
+                onBack = { nav.popBackStack() },
+                onAddAlumno = { cid -> 
+                    nav.navigate(Routes.ADMIN_ADD_ALUMNO.replace("{carreraId}", cid).replace("{groupId}", id))
+                }
+            )
         }
 
         composable(
@@ -271,10 +267,11 @@ fun AppNavHost(
             val pType = back.arguments?.getString("programType") ?: ""
             val tId = back.arguments?.getString("tutorId") ?: ""
             val cId = back.arguments?.getString("carreraId") ?: ""
+            val vm: AdminGruposViewModel = hiltViewModel()
             AssignStudentsScreen(
                 onBack = { nav.popBackStack() },
                 onSaveGroup = { studentIds ->
-                    adminGruposViewModel.createGroup(gName, tId, studentIds, cId)
+                    vm.createGroup(gName, tId, studentIds, cId)
                     nav.navigate(Routes.ADMIN_GRUPOS) {
                         popUpTo(Routes.ADMIN_GRUPOS) { inclusive = true }
                     }
@@ -302,8 +299,12 @@ fun AppNavHost(
             AddProfesorScreen(carreraId = carreraId, onBack = { nav.popBackStack() })
         }
 
-        composable(Routes.PROFILE) { ProfileScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
+        composable(Routes.PROFILE) { 
+            val svm: SettingsViewModel = hiltViewModel()
+            ProfileScreen(onBack = { nav.popBackStack() }, settingsVm = svm) 
+        }
         composable(Routes.STUDENT_SERVICES) {
+            val svm: SettingsViewModel = hiltViewModel()
             StudentServicesScreen(
                 onBack = { nav.popBackStack() },
                 onOpenInfo = { nav.navigate(Routes.SCHOOL_INFO) },
@@ -311,60 +312,52 @@ fun AppNavHost(
                 onOpenRequests = { nav.navigate(Routes.STUDENT_REQUESTS) },
                 onOpenDocuments = { nav.navigate(Routes.STUDENT_DOCUMENTS) },
                 onOpenDigitalID = { nav.navigate(Routes.DIGITAL_ID) },
-                settingsVm = settingsVM
+                settingsVm = svm
             )
         }
-        composable(Routes.DIGITAL_ID) { DigitalIDScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
-        composable(Routes.STUDENT_DOCUMENTS) { StudentDocumentsScreen(onBack = { nav.popBackStack() }, vm = proceduresVM) }
+        composable(Routes.DIGITAL_ID) { 
+            val svm: SettingsViewModel = hiltViewModel()
+            DigitalIDScreen(onBack = { nav.popBackStack() }, settingsVm = svm) 
+        }
+        composable(Routes.STUDENT_DOCUMENTS) { 
+            val pvm: StudentProceduresViewModel = hiltViewModel()
+            StudentDocumentsScreen(onBack = { nav.popBackStack() }, vm = pvm) 
+        }
         composable(Routes.STUDENT_PROCEDURES) {
+            val svm: SettingsViewModel = hiltViewModel()
             StudentProceduresScreen(
                 onBack = { nav.popBackStack() },
                 onOpenEnrollmentCertificate = { nav.navigate(Routes.STUDENT_ENROLLMENT_CERTIFICATE) },
-                onOpenKardex = { nav.navigate(Routes.KARDEX_SELECTION) },
                 onOpenIDReplacement = { nav.navigate(Routes.ID_REPLACEMENT) },
                 onOpenInternshipCertificate = { nav.navigate(Routes.INTERNSHIP_CERTIFICATE) },
                 onOpenBajaTemporal = { nav.navigate(Routes.BAJA_TEMPORAL) },
-                settingsVm = settingsVM
+                settingsVm = svm
             )
         }
         composable(Routes.STUDENT_REQUESTS) {
+            val pvm: StudentProceduresViewModel = hiltViewModel()
             StudentRequestsScreen(
                 onBack = { nav.popBackStack() },
                 onStartProcedure = { nav.navigate(Routes.STUDENT_PROCEDURES) },
-                vm = proceduresVM
-            )
-        }
-        composable(Routes.KARDEX_SELECTION) {
-            KardexSelectionScreen(
-                onBack = { nav.popBackStack() },
-                onViewHistory = { nav.navigate(Routes.ACADEMIC_HISTORY) },
-                onRequestOfficial = { nav.navigate(Routes.KARDEX_REQUEST) },
-                settingsVm = settingsVM
+                vm = pvm
             )
         }
         composable(Routes.ACADEMIC_HISTORY) { AcademicHistoryScreen(onBack = { nav.popBackStack() }) }
-        composable(Routes.KARDEX_REQUEST) {
-            KardexRequestScreen(
-                onBack = { nav.popBackStack() },
-                vm = proceduresVM,
-                onFinish = { isDigital ->
-                    val target = if (isDigital) Routes.STUDENT_DOCUMENTS else Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS
-                    nav.navigate(target) { popUpTo(Routes.KARDEX_SELECTION) { inclusive = true } }
-                }
-            )
-        }
         composable(Routes.STUDENT_ENROLLMENT_CERTIFICATE) {
-            StudentEnrollmentCertificateScreen(onBack = { nav.popBackStack() }, onRequest = { nav.navigate(Routes.STUDENT_ENROLLMENT_FORM) }, settingsVm = settingsVM)
+            val svm: SettingsViewModel = hiltViewModel()
+            StudentEnrollmentCertificateScreen(onBack = { nav.popBackStack() }, onRequest = { nav.navigate(Routes.STUDENT_ENROLLMENT_FORM) }, settingsVm = svm)
         }
         composable(Routes.STUDENT_ENROLLMENT_FORM) {
+            val pvm: StudentProceduresViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
             StudentEnrollmentFormScreen(
                 onBack = { nav.popBackStack() },
-                vm = proceduresVM,
+                vm = pvm,
                 onSubmit = { isDigital ->
                     if (isDigital) nav.navigate(Routes.STUDENT_DOCUMENTS) { popUpTo(Routes.STUDENT_PROCEDURES) { inclusive = false } }
                     else nav.navigate(Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS)
                 },
-                settingsVm = settingsVM
+                settingsVm = svm
             )
         }
         composable(Routes.STUDENT_ENROLLMENT_CERTIFICATE_SUCCESS) {
@@ -375,50 +368,92 @@ fun AppNavHost(
             )
         }
         composable(Routes.SCHOOL_INFO) { SchoolInfoScreen(onBack = { nav.popBackStack() }) }
-        composable(Routes.TIMETABLE) { TimetableScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
+        composable(Routes.TIMETABLE) { 
+            val svm: SettingsViewModel = hiltViewModel()
+            TimetableScreen(onBack = { nav.popBackStack() }, settingsVm = svm) 
+        }
         composable(Routes.HEALTH) {
+            val svm: SettingsViewModel = hiltViewModel()
+            val mvm: MedicalAppointmentViewModel = hiltViewModel()
             HealthScreen(
                 onBack = { nav.popBackStack() },
                 onOpenMedicalSupport = { 
-                    medicalVm.service.value = "Médico General"
-                    medicalVm.location.value = "Consultorio A-102"
+                    mvm.service.value = "Médico General"
+                    mvm.location.value = "Consultorio A-102"
                     nav.navigate(Routes.MEDICAL_SUPPORT) 
                 },
                 onOpenPsychSupport = { 
-                    medicalVm.service.value = "Psicología"
-                    medicalVm.location.value = "Edificio D, Cubículo 202"
+                    mvm.service.value = "Psicología"
+                    mvm.location.value = "Edificio D, Cubículo 202"
                     nav.navigate(Routes.PSYCHOLOGIST_DETAIL) 
                 },
                 onTriggerSOS = { nav.navigate(Routes.SOS_ACTIVE) },
                 onViewAppointments = { nav.navigate(Routes.MY_APPOINTMENTS) },
-                settingsVm = settingsVM,
-                medicalVm = medicalVm
+                settingsVm = svm,
+                medicalVm = mvm
             )
         }
 
         composable(Routes.SOS_ACTIVE) {
+            val contextS = LocalContext.current
+            val svm: SOSViewModel = hiltViewModel()
             SOSActiveScreen(
-                viewModel = sosViewModel,
+                viewModel = svm,
                 onCancel = { nav.popBackStack() },
                 onCallEmergencies = {
                     val intent = Intent(Intent.ACTION_DIAL).apply { data = Uri.parse("tel:911") }
-                    context.startActivity(intent)
+                    contextS.startActivity(intent)
                 }
             )
         }
 
         composable(Routes.PSYCHOLOGIST_DETAIL) { PsychologistDetailScreen(onBack = { nav.popBackStack() }, onBookAppointment = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) }) }
         composable(Routes.MEDICAL_SUPPORT) { MedicalSupportScreen(onBack = { nav.popBackStack() }, onBook = { nav.navigate(Routes.MEDICAL_APPOINTMENT_FORM) }) }
-        composable(Routes.MEDICAL_APPOINTMENT_FORM) { MedicalAppointmentFormScreen(onBack = { nav.popBackStack() }, onContinue = { nav.navigate(Routes.MEDICAL_SCHEDULE_SELECTION) }, vm = medicalVm, settingsVm = settingsVM) }
-        composable(Routes.MEDICAL_SCHEDULE_SELECTION) { MedicalScheduleSelectionScreen(onBack = { nav.popBackStack() }, onContinue = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUMMARY) }, vm = medicalVm, healthVm = healthVM, settingsVm = settingsVM) }
-        composable(Routes.MEDICAL_APPOINTMENT_SUMMARY) { MedicalAppointmentSummaryScreen(onBack = { nav.popBackStack() }, onConfirm = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUCCESS) }, onEdit = { nav.popBackStack() }, vm = medicalVm, settingsVm = settingsVM) }
-        composable(Routes.MEDICAL_APPOINTMENT_SUCCESS) { MedicalAppointmentSuccessScreen(onGoHome = { nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } }, vm = medicalVm) }
-        composable(Routes.MY_APPOINTMENTS) { MyAppointmentsScreen(onBack = { nav.popBackStack() }, medicalVm = medicalVm, settingsVm = settingsVM) }
-        composable(Routes.ID_REPLACEMENT) { IDReplacementScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = proceduresVM, settingsVm = settingsVM) }
-        composable(Routes.BAJA_TEMPORAL) { BajaTemporalScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = proceduresVM, settingsVm = settingsVM) }
-        composable(Routes.INTERNSHIP_CERTIFICATE) { InternshipCertificateScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = proceduresVM, settingsVm = settingsVM) }
+        composable(Routes.MEDICAL_APPOINTMENT_FORM) { 
+            val mvm: MedicalAppointmentViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            MedicalAppointmentFormScreen(onBack = { nav.popBackStack() }, onContinue = { nav.navigate(Routes.MEDICAL_SCHEDULE_SELECTION) }, vm = mvm, settingsVm = svm) 
+        }
+        composable(Routes.MEDICAL_SCHEDULE_SELECTION) { 
+            val mvm: MedicalAppointmentViewModel = hiltViewModel()
+            val hvm: HealthViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            MedicalScheduleSelectionScreen(onBack = { nav.popBackStack() }, onContinue = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUMMARY) }, vm = mvm, healthVm = hvm, settingsVm = svm) 
+        }
+        composable(Routes.MEDICAL_APPOINTMENT_SUMMARY) { 
+            val mvm: MedicalAppointmentViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            MedicalAppointmentSummaryScreen(onBack = { nav.popBackStack() }, onConfirm = { nav.navigate(Routes.MEDICAL_APPOINTMENT_SUCCESS) }, onEdit = { nav.popBackStack() }, vm = mvm, settingsVm = svm) 
+        }
+        composable(Routes.MEDICAL_APPOINTMENT_SUCCESS) { 
+            val mvm: MedicalAppointmentViewModel = hiltViewModel()
+            MedicalAppointmentSuccessScreen(onGoHome = { nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } }, vm = mvm) 
+        }
+        composable(Routes.MY_APPOINTMENTS) { 
+            val mvm: MedicalAppointmentViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            MyAppointmentsScreen(onBack = { nav.popBackStack() }, medicalVm = mvm, settingsVm = svm) 
+        }
+        composable(Routes.ID_REPLACEMENT) { 
+            val pvm: StudentProceduresViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            IDReplacementScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = pvm, settingsVm = svm) 
+        }
+        composable(Routes.BAJA_TEMPORAL) { 
+            val pvm: StudentProceduresViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            BajaTemporalScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = pvm, settingsVm = svm) 
+        }
+        composable(Routes.INTERNSHIP_CERTIFICATE) { 
+            val pvm: StudentProceduresViewModel = hiltViewModel()
+            val svm: SettingsViewModel = hiltViewModel()
+            InternshipCertificateScreen(onBack = { nav.popBackStack() }, onFinish = { nav.popBackStack() }, vm = pvm, settingsVm = svm) 
+        }
 
-        composable(Routes.SUBJECTS) { SubjectsScreen(onBack = { nav.popBackStack() }, onOpenSubject = { t, id -> nav.navigate("subjectDetail/$t/$id") }, onGoGrades = { nav.navigate(Routes.GRADES) }, settingsVm = settingsVM) }
+        composable(Routes.SUBJECTS) { 
+            val svm: SettingsViewModel = hiltViewModel()
+            SubjectsScreen(onBack = { nav.popBackStack() }, onOpenSubject = { t, id -> nav.navigate("subjectDetail/$t/$id") }, onGoGrades = { nav.navigate(Routes.GRADES) }, settingsVm = svm) 
+        }
         composable(Routes.GRADES) { GradesScreen(onBack = { nav.popBackStack() }) }
         composable(
             route = "subjectDetail/{term}/{subjectId}",
@@ -428,9 +463,19 @@ fun AppNavHost(
             val id = back.arguments?.getString("subjectId") ?: ""
             SubjectDetailScreen(subjectId = id, term = t, onBack = { nav.popBackStack() })
         }
-        composable(Routes.SETTINGS) { SettingsScreen(onBack = { nav.popBackStack() }, onLogout = { authVM.logout() }, vm = settingsVM) }
-        composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(onBack = { nav.popBackStack() }, settingsVm = settingsVM) }
-        composable(Routes.ROUTES) { RoutesSelectorScreen(onBack = { nav.popBackStack() }, onOpenSaltillo = { nav.navigate("routeMap/Saltillo") }, onOpenRamos = { nav.navigate("routeMap/Ramos") }) }
+        
+        composable(Routes.SETTINGS) { 
+            val svm: SettingsViewModel = hiltViewModel()
+            SettingsScreen(onBack = { nav.popBackStack() }, onLogout = { authVM.logout() }, vm = svm) 
+        }
+        
+        composable(Routes.ANNOUNCEMENTS) { 
+            val svm: SettingsViewModel = hiltViewModel()
+            AnnouncementsScreen(onBack = { nav.popBackStack() }, settingsVm = svm) 
+        }
+        composable(Routes.ROUTES) { 
+            RoutesSelectorScreen(onBack = { nav.popBackStack() }, onOpenSaltillo = { nav.navigate("routeMap/Saltillo") }, onOpenRamos = { nav.navigate("routeMap/Ramos") }) 
+        }
         composable(route = Routes.ROUTE_MAP, arguments = listOf(navArgument("id") { type = NavType.StringType })) { back ->
             val id = back.arguments?.getString("id") ?: "R5"
             RouteMapScreen(routeId = id, onBack = { nav.popBackStack() })

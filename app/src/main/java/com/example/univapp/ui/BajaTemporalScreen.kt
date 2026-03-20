@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,89 +62,49 @@ fun BajaTemporalScreen(
         )
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = cardBg
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+    AppScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Baja Temporal", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Atrás", modifier = Modifier.size(32.dp), tint = if (dark) Color.White else Color(0xFF004696))
                     }
-                    Text("Baja Temporal", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor)
-                }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = cardBg)
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bgColor)
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Motivo de la baja", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = titleColor)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text("Selecciona una opción", fontSize = 14.sp, color = subtitleColor)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ExposedDropdownMenuBox(
-                            expanded = expandedReason,
-                            onExpandedChange = { expandedReason = it },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            TextField(
-                                value = selectedReason,
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedReason) },
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = bgColor,
-                                    unfocusedContainerColor = bgColor,
-                                    focusedTextColor = titleColor,
-                                    unfocusedTextColor = titleColor,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().menuAnchor()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = expandedReason,
-                                onDismissRequest = { expandedReason = false },
-                                modifier = Modifier.background(cardBg)
-                            ) {
-                                reasonOptions.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(option, color = titleColor) },
-                                        onClick = {
-                                            selectedReason = option
-                                            expandedReason = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Text("Describe el motivo", fontSize = 14.sp, color = subtitleColor)
-                        Spacer(modifier = Modifier.height(8.dp))
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Motivo de la baja", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = titleColor)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("Selecciona una opción", fontSize = 14.sp, color = subtitleColor)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ExposedDropdownMenuBox(
+                        expanded = expandedReason,
+                        onExpandedChange = { expandedReason = it },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         TextField(
-                            value = reasonDescription,
-                            onValueChange = { reasonDescription = it },
-                            placeholder = { Text("Proporciona más detalles sobre tu solicitud...", color = subtitleColor.copy(alpha = 0.6f)) },
-                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            value = selectedReason,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedReason) },
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = bgColor,
                                 unfocusedContainerColor = bgColor,
@@ -151,78 +113,107 @@ fun BajaTemporalScreen(
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Fecha de cita", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = titleColor)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Selecciona el día para acudir a Servicios Escolares", fontSize = 14.sp, color = subtitleColor)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        OutlinedTextField(
-                            value = selectedDate,
-                            onValueChange = {},
-                            readOnly = true,
-                            modifier = Modifier.fillMaxWidth().clickable { },
-                            trailingIcon = { Icon(Icons.Default.CalendarToday, null, tint = subtitleColor) },
                             shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color(0xFF2563EB),
-                                unfocusedBorderColor = subtitleColor.copy(alpha = 0.3f),
-                                focusedTextColor = titleColor,
-                                unfocusedTextColor = titleColor
-                            )
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (dark) Color(0xFF1E3A8A).copy(alpha = 0.3f) else Color(0xFFEFF6FF)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Información importante", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                        ExposedDropdownMenu(
+                            expanded = expandedReason,
+                            onDismissRequest = { expandedReason = false },
+                            modifier = Modifier.background(cardBg)
+                        ) {
+                            reasonOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option, color = titleColor) },
+                                    onClick = {
+                                        selectedReason = option
+                                        expandedReason = false
+                                    }
+                                )
+                            }
                         }
-                        InfoItem(Icons.Default.LocationOn, "Este trámite se realiza presencialmente en el campus.", dark)
-                        InfoItem(Icons.Default.Badge, "Presenta identificación oficial y credencial universitaria vigente.", dark)
-                        InfoItem(Icons.Default.Schedule, "Tiempo estimado de respuesta: 3 a 5 días hábiles.", dark)
                     }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text("Describe el motivo", fontSize = 14.sp, color = subtitleColor)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ValidatedTextField(
+                        value = reasonDescription,
+                        onValueChange = { reasonDescription = it },
+                        label = "Detalles de la solicitud",
+                        maxLength = 300,
+                        singleLine = false,
+                        modifier = Modifier.heightIn(min = 120.dp)
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = { showConfirmDialog = true },
-                    enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF2563EB)),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CalendarMonth, null)
-                            Spacer(Modifier.width(12.dp))
-                            Text("Agendar cita para baja temporal", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Fecha de cita", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = titleColor)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Selecciona el día para acudir a Servicios Escolares", fontSize = 14.sp, color = subtitleColor)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = selectedDate,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth().clickable { },
+                        trailingIcon = { Icon(Icons.Default.CalendarToday, null, tint = subtitleColor) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF2563EB),
+                            unfocusedBorderColor = subtitleColor.copy(alpha = 0.3f),
+                            focusedTextColor = titleColor,
+                            unfocusedTextColor = titleColor
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = if (dark) Color(0xFF1E3A8A).copy(alpha = 0.3f) else Color(0xFFEFF6FF)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Información importante", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                    }
+                    InfoItem(Icons.Default.LocationOn, "Este trámite se realiza presencialmente en el campus.", dark)
+                    InfoItem(Icons.Default.Badge, "Presenta identificación oficial y credencial universitaria vigente.", dark)
+                    InfoItem(Icons.Default.Schedule, "Tiempo estimado de respuesta: 3 a 5 días hábiles.", dark)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = { showConfirmDialog = true },
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF2563EB)),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CalendarMonth, null)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Agendar cita para baja temporal", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

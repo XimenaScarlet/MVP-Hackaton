@@ -1,19 +1,14 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.example.univapp.ui
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,354 +16,186 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.univapp.data.Materia
+import com.example.univapp.ui.util.AppScaffold
 
-@Composable
-fun SubjectsScreen(
-    onBack: () -> Unit,
-    onOpenSubject: (term: Int, subjectId: String) -> Unit,
-    onGoGrades: () -> Unit = {},
-    vm: SubjectsViewModel = viewModel(),
-    settingsVm: SettingsViewModel = viewModel()
-) {
-    val currentMaxSemester by vm.currentSemester.collectAsState()
-    val subjects by vm.subjects.collectAsState()
-    val isLoading by vm.loading.collectAsState()
-    val dark by settingsVm.darkMode.collectAsState()
-    
-    var selectedTerm by remember { mutableIntStateOf(0) }
-    var showTermPicker by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        vm.loadUserSemesterAndSubjects()
-    }
-    
-    LaunchedEffect(currentMaxSemester) {
-        if (currentMaxSemester > 0) {
-            selectedTerm = currentMaxSemester
-        }
-    }
-
-    // Dynamic Colors
-    val bgColor = if (dark) Color(0xFF0F172A) else Color(0xFFFBF9F7)
-    val cardBg = if (dark) Color(0xFF1E293B) else Color.White
-    val titleColor = if (dark) Color.White else Color(0xFF4A3F35)
-    val subtitleColor = if (dark) Color(0xFF94A3B8) else Color(0xFFB5A492)
-    val iconBtnBg = if (dark) Color(0xFF334155) else Color.White
-
-    val displayTerm = if (selectedTerm > 0) selectedTerm else currentMaxSemester
-
-    val termName = when (displayTerm) {
-        1 -> "Primer Cuatrimestre"
-        2 -> "Segundo Cuatrimestre"
-        3 -> "Tercer Cuatrimestre"
-        4 -> "Cuarto Cuatrimestre"
-        5 -> "Quinto Cuatrimestre"
-        6 -> "Sexto Cuatrimestre"
-        7 -> "Séptimo Cuatrimestre"
-        8 -> "Octavo Cuatrimestre"
-        9 -> "Noveno Cuatrimestre"
-        10 -> "Décimo Cuatrimestre"
-        else -> "$displayTerm° Cuatrimestre"
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
-        if (isLoading && subjects.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFFA67C52))
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .background(iconBtnBg, CircleShape)
-                            .size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = "Atrás",
-                            modifier = Modifier.size(28.dp),
-                            tint = titleColor
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "RESUMEN ACADÉMICO",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = subtitleColor,
-                            letterSpacing = 1.sp
-                        )
-                        Text(
-                            text = "Mi Cuatrimestre",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Term Selector
-                Box {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                            .clickable { showTermPicker = true },
-                        shape = RoundedCornerShape(20.dp),
-                        color = cardBg,
-                        shadowElevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Spacer(Modifier.width(24.dp))
-                            Text(
-                                text = termName,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = titleColor
-                            )
-                            Icon(
-                                imageVector = if (showTermPicker) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = subtitleColor
-                            )
-                        }
-                    }
-
-                    DropdownMenu(
-                        expanded = showTermPicker,
-                        onDismissRequest = { showTermPicker = false },
-                        modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .background(cardBg, RoundedCornerShape(16.dp))
-                    ) {
-                        for (termNum in 1..maxOf(currentMaxSemester, 1)) {
-                            val name = when (termNum) {
-                                1 -> "Primer Cuatrimestre"
-                                2 -> "Segundo Cuatrimestre"
-                                3 -> "Tercer Cuatrimestre"
-                                4 -> "Cuarto Cuatrimestre"
-                                5 -> "Quinto Cuatrimestre"
-                                6 -> "Sexto Cuatrimestre"
-                                7 -> "Séptimo Cuatrimestre"
-                                8 -> "Octavo Cuatrimestre"
-                                9 -> "Noveno Cuatrimestre"
-                                10 -> "Décimo Cuatrimestre"
-                                else -> "$termNum° Cuatrimestre"
-                            }
-                            DropdownMenuItem(
-                                text = { 
-                                    Text(
-                                        name, 
-                                        fontWeight = if (displayTerm == termNum) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (displayTerm == termNum) titleColor else subtitleColor
-                                    ) 
-                                },
-                                onClick = {
-                                    selectedTerm = termNum
-                                    showTermPicker = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Boleta de Calificaciones Button
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
-                        .clickable { onGoGrades() },
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    shadowElevation = 2.dp
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFA67C52),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = "BOLETA DE CALIFICACIONES",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = titleColor,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                if (subjects.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Text("No tienes materias asignadas", color = Color.Gray)
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 32.dp)
-                    ) {
-                        items(subjects) { subject ->
-                            val uiData = SubjectDisplayData(
-                                id = subject.id,
-                                name = subject.nombre,
-                                department = "MATERIA",
-                                progressLabel = "100%",
-                                progress = 1.0f,
-                                icon = Icons.AutoMirrored.Filled.MenuBook,
-                                color = getSubjectColor(subject.nombre, dark)
-                            )
-                            DetailedSubjectCard(uiData, cardBg, titleColor, dark) {
-                                onOpenSubject(displayTerm, subject.id)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun getSubjectColor(name: String, isDark: Boolean): Color {
-    val colors = if (isDark) {
-        listOf(Color(0xFF60A5FA), Color(0xFFFB923C), Color(0xFF34D399), Color(0xFFA5B4FC), Color(0xFFF472B6))
-    } else {
-        listOf(Color(0xFF3B82F6), Color(0xFFF97316), Color(0xFF10B981), Color(0xFF6366F1), Color(0xFFEC4899))
-    }
-    return colors[name.length % colors.size]
-}
-
-private data class SubjectDisplayData(
+data class SubjectDetails(
     val id: String,
     val name: String,
-    val department: String,
-    val progressLabel: String,
-    val progress: Float,
+    val description: String,
+    val term: Int,
     val icon: ImageVector,
     val color: Color
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DetailedSubjectCard(data: SubjectDisplayData, cardBg: Color, titleColor: Color, isDark: Boolean, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+fun SubjectsScreen(
+    onBack: () -> Unit,
+    onOpenSubject: (Int, String) -> Unit,
+    onGoGrades: () -> Unit,
+    settingsVm: SettingsViewModel
+) {
+    val isDarkMode by settingsVm.darkMode.collectAsState()
+    val teal = Color(0xFF0F6C6D)
+    val darkBg = Color(0xFF101828)
+    val menuBg = if (isDarkMode) Color(0xFF1D2939) else Color.White
+
+    val allSubjects = remember {
+        listOf(
+            SubjectDetails("1", "Metodología de la Programación", "Fundamentos de lógica y algoritmos.", 1, Icons.Default.Code, Color(0xFF3F51B5)),
+            SubjectDetails("2", "Introducción a las TI", "Panorama general de la tecnología actual.", 1, Icons.Default.Computer, Color(0xFF009688)),
+            SubjectDetails("3", "Matemáticas para TI", "Cálculo y álgebra para computación.", 1, Icons.Default.Calculate, Color(0xFFFF9800)),
+            SubjectDetails("4", "Inglés I", "Nivel inicial de inglés técnico.", 1, Icons.Default.Language, Color(0xFF9C27B0)),
+            SubjectDetails("5", "Formación Sociocultural I", "Desarrollo humano y profesional.", 1, Icons.Default.Groups, Color(0xFFE91E63)),
+            SubjectDetails("6", "Expresión Oral y Escrita I", "Habilidades de comunicación efectiva.", 1, Icons.Default.Campaign, Color(0xFF2196F3)),
+            SubjectDetails("7", "Estructura de Datos", "Gestión eficiente de información en memoria.", 2, Icons.Default.Schema, Color(0xFF795548)),
+            SubjectDetails("8", "Base de Datos I", "Modelado y diseño relacional SQL.", 2, Icons.Default.Storage, Color(0xFF607D8B)),
+            SubjectDetails("9", "Programación Orientada a Objetos", "Paradigma de clases y objetos.", 2, Icons.Default.Extension, Color(0xFF4CAF50)),
+            SubjectDetails("10", "Redes de Área Local", "Configuración de redes y protocolos.", 2, Icons.Default.Router, Color(0xFFF44336)),
+            SubjectDetails("13", "Aplicaciones Web I", "Desarrollo frontend con HTML/JS.", 3, Icons.Default.Html, Color(0xFFFFC107)),
+            SubjectDetails("18", "Aplicaciones Móviles I", "Desarrollo nativo para Android.", 4, Icons.Default.Smartphone, Color(0xFF3D5AFE)),
+            SubjectDetails("25", "Seguridad Informática", "Criptografía y protección de datos.", 5, Icons.Default.Security, Color(0xFFD84315)),
+            SubjectDetails("28", "Inteligencia Artificial", "Machine Learning y redes neuronales.", 6, Icons.Default.AutoGraph, Color(0xFFAD1457)),
+            SubjectDetails("33", "Cloud Computing", "Servicios en la nube AWS y Azure.", 7, Icons.Default.Cloud, Color(0xFF039BE5)),
+            SubjectDetails("38", "Ciberseguridad Avanzada", "Hacking ético e incidentes.", 8, Icons.Default.AdminPanelSettings, Color(0xFFB71C1C)),
+            SubjectDetails("43", "Integradora II", "Proyecto final de titulación.", 9, Icons.Default.RocketLaunch, Color(0xFF1B5E20))
+        )
+    }
+
+    var selectedTerm by remember { mutableIntStateOf(1) }
+    val filteredSubjects = allSubjects.filter { it.term == selectedTerm }
+
+    AppScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Materias", fontWeight = FontWeight.Bold) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = if (isDarkMode) darkBg else Color.White,
+                    titleContentColor = if (isDarkMode) Color.White else Color.Black
+                )
+            )
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(padding)
+                .background(if (isDarkMode) darkBg else Color(0xFFF8F9FB))
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(data.color.copy(alpha = if (isDark) 0.2f else 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
+            var expanded by remember { mutableStateOf(false) }
+            
+            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
                 ) {
-                    Icon(
-                        imageVector = data.icon,
-                        contentDescription = null,
-                        tint = data.color,
-                        modifier = Modifier.size(22.dp)
+                    OutlinedTextField(
+                        value = "Cuatrimestre $selectedTerm",
+                        onValueChange = {},
+                        readOnly = true,
+                        leadingIcon = { Icon(Icons.Default.CalendarToday, null, tint = teal) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = teal,
+                            unfocusedBorderColor = if (isDarkMode) Color.Gray.copy(alpha = 0.3f) else Color.LightGray
+                        )
                     )
-                }
-
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawArc(
-                            color = if (isDark) Color(0xFF334155) else Color(0xFFF3F4F6),
-                            startAngle = 0f,
-                            sweepAngle = 360f,
-                            useCenter = false,
-                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawArc(
-                            color = data.color,
-                            startAngle = -90f,
-                            sweepAngle = 360f * data.progress,
-                            useCenter = false,
-                            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-                        )
+                    
+                    // Estilo Popover Premium
+                    MaterialTheme(
+                        shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(24.dp))
+                    ) {
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.background(menuBg)
+                        ) {
+                            (1..9).forEach { term ->
+                                val isSelected = selectedTerm == term
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Today, 
+                                            null, 
+                                            tint = if(isSelected) teal else Color.Gray,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    text = { 
+                                        Text(
+                                            "Cuatrimestre $term",
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) teal else if (isDarkMode) Color.White else Color.Black
+                                        ) 
+                                    },
+                                    trailingIcon = {
+                                        if (isSelected) {
+                                            Icon(Icons.Default.Check, null, tint = teal, modifier = Modifier.size(18.dp))
+                                        }
+                                    },
+                                    onClick = { 
+                                        selectedTerm = term
+                                        expanded = false
+                                    },
+                                    modifier = Modifier
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) teal.copy(alpha = 0.1f) else Color.Transparent),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        text = data.progressLabel,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = titleColor
-                    )
                 }
             }
+            
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(20.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(filteredSubjects) { subject ->
+                    CourseCard(subject = subject, onClick = { onOpenSubject(subject.term, subject.id) })
+                }
+            }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = data.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = titleColor,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = data.department,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (isDark) Color(0xFF94A3B8) else Color(0xFF9CA3AF)
-            )
+@Composable
+fun CourseCard(subject: SubjectDetails, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 260.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1D2939)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(subject.color.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(subject.icon, null, tint = subject.color, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(text = subject.name, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, lineHeight = 20.sp)
+            Spacer(Modifier.height(12.dp))
+            Text(text = subject.description, color = Color(0xFF98A2B3), fontSize = 13.sp, lineHeight = 18.sp)
+            Spacer(Modifier.weight(1f))
         }
     }
 }

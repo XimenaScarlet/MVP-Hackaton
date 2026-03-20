@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Profesor
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,8 +39,7 @@ fun AddGrupoScreen(
     var tipoPrograma by remember { mutableStateOf("Ingeniería") }
     var selectedTutor by remember { mutableStateOf<Profesor?>(null) }
 
-    Scaffold(
-        containerColor = Color(0xFFF5F6F8),
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Agregar Grupo", fontWeight = FontWeight.Bold) },
@@ -75,11 +76,11 @@ fun AddGrupoScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            OutlinedTextField(
+            ValidatedTextField(
                 value = nombre,
                 onValueChange = { nombre = it },
-                label = { Text("Nombre del Grupo") },
-                placeholder = { Text("Ej: 1°A") },
+                label = "Nombre del Grupo",
+                maxLength = 20,
                 modifier = Modifier.fillMaxWidth()
             )
 

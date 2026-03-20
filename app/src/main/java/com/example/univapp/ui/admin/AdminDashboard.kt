@@ -1,5 +1,9 @@
 package com.example.univapp.ui.admin
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +18,7 @@ import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +28,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 
 @Composable
 fun AdminDashboard(
@@ -39,6 +47,23 @@ fun AdminDashboard(
     val bgDark = Color(0xFF121726)
     val tileBg = Color(0xFF1C2236)
     val labelDim = Color(0xFF8BA0B3)
+
+    // Notification Permission Launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            registerFcmToken()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            registerFcmToken()
+        }
+    }
 
     val items = listOf(
         AdminDashboardItem(
@@ -164,6 +189,23 @@ fun AdminDashboard(
                     )
                 }
             }
+        }
+    }
+}
+
+private fun registerFcmToken() {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            val token = task.result
+            val db = FirebaseFirestore.getInstance()
+            val tokenData = mapOf(
+                "uid" to uid,
+                "token" to token,
+                "role" to "admin",
+                "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+            db.collection("admin_tokens").document(uid).set(tokenData)
         }
     }
 }

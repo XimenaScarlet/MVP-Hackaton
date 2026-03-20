@@ -32,6 +32,7 @@ import com.example.univapp.ui.maps.routeOnRoadsBetweenStops
 import com.example.univapp.ui.routes.RouteSpec
 import com.example.univapp.ui.routes.RoutesCatalog
 import com.example.univapp.ui.routes.StopSpec
+import com.example.univapp.ui.util.AppScaffold
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.*
 import com.google.maps.android.compose.*
@@ -109,9 +110,8 @@ fun RouteMapScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            // Título centrado
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -241,9 +241,7 @@ private fun RoutesCarouselBar(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
-            Modifier
-                .navigationBarsPadding()
-                .padding(vertical = 10.dp),
+            Modifier.padding(vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Título "Rutas" centrado

@@ -92,10 +92,15 @@ class AdminImportMateriasViewModel(application: Application) : AndroidViewModel(
                         processedCount += chunk.size
                     }
 
-                    ImportResult(processedCount, errors)
+                    ImportResult(
+                        totalProcessed = processedCount,
+                        createdInAuth = 0,
+                        existingInAuth = 0,
+                        rowErrors = errors
+                    )
                 }
 
-                _importState.value = ImportState.Success(result.count, result.rowErrors)
+                _importState.value = ImportState.Success(result)
 
             } catch (t: Throwable) {
                 _importState.value = ImportState.Error(t.localizedMessage ?: "Error desconocido.")

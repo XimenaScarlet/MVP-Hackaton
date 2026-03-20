@@ -1,11 +1,12 @@
 package com.example.univapp.ui.maps
 
+import com.example.univapp.data.network.MapsApiService
+import com.example.univapp.di.NetworkModule
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class EtaResult(
     val durationSeconds: Long,
@@ -13,28 +14,32 @@ data class EtaResult(
 )
 
 /**
- * ETA con OSRM pública (sin API key).
- * origin y dest en WGS84. Devuelve null si falla.
+ * ETA con OSRM pública migrado a Retrofit para mayor seguridad.
+ */
+@Singleton
+class EtaFetcher @Inject constructor(
+    private val apiService: MapsApiService
+) {
+    suspend fun fetchEtaOsrm(origin: LatLng, dest: LatLng): EtaResult? =
+        com.example.univapp.ui.maps.fetchEtaOsrm(origin, dest)
+}
+
+/**
+ * Función global para compatibilidad con el código existente.
+ * Usa el puente estático de NetworkModule para obtener el servicio de Retrofit.
  */
 suspend fun fetchEtaOsrm(origin: LatLng, dest: LatLng): EtaResult? =
     withContext(Dispatchers.IO) {
-        // OSRM espera LON,LAT;LON,LAT
         val coords = "${origin.longitude},${origin.latitude};${dest.longitude},${dest.latitude}"
-        val url = "https://router.project-osrm.org/route/v1/driving/$coords?overview=false"
 
         runCatching {
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10_000
-                readTimeout = 10_000
-            }
-            conn.inputStream.bufferedReader().use { br ->
-                val json = JSONObject(br.readText())
-                if (json.optString("code") != "Ok") return@use null
-                val route0 = json.getJSONArray("routes").optJSONObject(0) ?: return@use null
-                val duration = route0.optDouble("duration", -1.0)
-                val distance = route0.optDouble("distance", -1.0)
-                if (duration < 0 || distance < 0) null
-                else EtaResult(durationSeconds = duration.toLong(), distanceMeters = distance.toLong())
-            }
+            val response = NetworkModule.mapsApiService.getOsrmRoute(coords = coords)
+            if (response.code != "Ok") return@runCatching null
+            val route0 = response.routes.firstOrNull() ?: return@runCatching null
+            
+            EtaResult(
+                durationSeconds = route0.duration.toLong(),
+                distanceMeters = route0.distance.toLong()
+            )
         }.getOrNull()
     }

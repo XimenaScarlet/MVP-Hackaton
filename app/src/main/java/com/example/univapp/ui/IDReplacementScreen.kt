@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,80 +70,41 @@ fun IDReplacementScreen(
         )
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = cardBg,
-                shadowElevation = 0.dp
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+    AppScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Reposición de Credencial", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Atrás", modifier = Modifier.size(32.dp), tint = if (dark) Color.White else Color(0xFF004696))
                     }
-                    Text("Reposición de Credencial", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor)
-                }
-            }
-
-            Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-                horizontalAlignment = Alignment.Start
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = cardBg)
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bgColor)
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text("Motivo de la reposición", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = titleColor)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            ExposedDropdownMenuBox(
+                expanded = expandedReason,
+                onExpandedChange = { expandedReason = it },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Motivo de la reposición", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = titleColor)
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                ExposedDropdownMenuBox(
-                    expanded = expandedReason,
-                    onExpandedChange = { expandedReason = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextField(
-                        value = selectedReason,
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = subtitleColor) },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = cardBg,
-                            unfocusedContainerColor = cardBg,
-                            focusedTextColor = titleColor,
-                            unfocusedTextColor = titleColor,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expandedReason,
-                        onDismissRequest = { expandedReason = false },
-                        modifier = Modifier.background(cardBg)
-                    ) {
-                        reasonOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option, color = titleColor) },
-                                onClick = {
-                                    selectedReason = option
-                                    expandedReason = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 TextField(
-                    value = reasonDescription,
-                    onValueChange = { reasonDescription = it },
-                    placeholder = { Text("Describe brevemente el motivo", color = subtitleColor) },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    value = selectedReason,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = subtitleColor) },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = cardBg,
                         unfocusedContainerColor = cardBg,
@@ -150,63 +113,92 @@ fun IDReplacementScreen(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
-                    shape = RoundedCornerShape(16.dp)
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Info Card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (dark) Color(0xFF1E3A8A).copy(alpha = 0.3f) else Color(0xFFEFF6FF)
-                ) {
-                    Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.Top) {
-                        Icon(Icons.Default.Info, null, tint = Color(0xFF2563EB), modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text("Información del trámite", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Costo: $150 MXN.", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
-                            Text("El pago y la foto se realizan en ventanilla de servicios escolares. Es necesario presentarse con identificación oficial.", fontSize = 14.sp, color = if (dark) Color(0xFFE2E8F0) else Color(0xFF1E3A8A), lineHeight = 20.sp)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text("Fecha sugerida para acudir", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = titleColor)
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Surface(
-                    modifier = Modifier.fillMaxWidth().height(56.dp).clickable { /* DatePicker logic */ },
                     shape = RoundedCornerShape(16.dp),
-                    color = cardBg
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expandedReason,
+                    onDismissRequest = { expandedReason = false },
+                    modifier = Modifier.background(cardBg)
                 ) {
-                    Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(selectedDate, color = titleColor, fontSize = 16.sp)
-                        Icon(Icons.Default.CalendarToday, null, tint = subtitleColor, modifier = Modifier.size(24.dp))
+                    reasonOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option, color = titleColor) },
+                            onClick = {
+                                selectedReason = option
+                                expandedReason = false
+                            }
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = { 
-                        if (selectedReason != "Selecciona una opción") {
-                            showConfirmationDialog = true 
-                        }
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF2563EB)),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text("Agendar reposición", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("Descripción (Opcional)", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = titleColor)
+            Spacer(modifier = Modifier.height(8.dp))
+            ValidatedTextField(
+                value = reasonDescription,
+                onValueChange = { reasonDescription = it },
+                label = "Describe brevemente el motivo",
+                maxLength = 200,
+                singleLine = false,
+                modifier = Modifier.heightIn(min = 120.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Info Card
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = if (dark) Color(0xFF1E3A8A).copy(alpha = 0.3f) else Color(0xFFEFF6FF)
+            ) {
+                Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Default.Info, null, tint = Color(0xFF2563EB), modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("Información del trámite", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Costo: $150 MXN.", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                        Text("El pago y la foto se realizan en ventanilla de servicios escolares. Es necesario presentarse con identificación oficial.", fontSize = 14.sp, color = if (dark) Color(0xFFE2E8F0) else Color(0xFF1E3A8A), lineHeight = 20.sp)
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text("Fecha sugerida para acudir", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = titleColor)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(56.dp).clickable { /* DatePicker logic */ },
+                shape = RoundedCornerShape(16.dp),
+                color = cardBg
+            ) {
+                Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(selectedDate, color = titleColor, fontSize = 16.sp)
+                    Icon(Icons.Default.CalendarToday, null, tint = subtitleColor, modifier = Modifier.size(24.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Button(
+                onClick = { 
+                    if (selectedReason != "Selecciona una opción") {
+                        showConfirmationDialog = true 
+                    }
+                },
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF2563EB)),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Agendar reposición", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

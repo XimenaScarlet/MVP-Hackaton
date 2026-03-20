@@ -137,7 +137,7 @@ private fun EmptyRequestsState(onStartProcedure: () -> Unit, dark: Boolean, titl
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Aquí aparecerán los trámites que realices, como constancias o kardex.",
+            text = "Aquí aparecerán los trámites que realices, como constancias.",
             fontSize = 16.sp,
             color = subtitleColor,
             textAlign = TextAlign.Center,

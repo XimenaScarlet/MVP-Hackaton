@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Alumno
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,9 +51,9 @@ fun AssignStudentsScreen(
         (a.matricula ?: "").contains(searchQuery, ignoreCase = true)
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Asignar Alumnos") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -58,12 +61,11 @@ fun AssignStudentsScreen(
                     }
                 }
             )
-        },
-        containerColor = Color(0xFFF8F9FA)
-    ) {
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
-                .padding(it)
+                .padding(padding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
         ) {
@@ -72,23 +74,21 @@ fun AssignStudentsScreen(
                     CircularProgressIndicator()
                 }
             } else {
-                OutlinedTextField(
+                ValidatedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Buscar estudiantes...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    label = "Buscar estudiantes...",
+                    maxLength = 50,
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
                     trailingIcon = {
-                         IconButton(onClick = { /* TODO: Implement filter */ }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filtrar")
-                        }
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.White,
-                        focusedContainerColor = Color.White,
-unfocusedBorderColor = Color.LightGray
-                    )
+                         if (searchQuery.isNotEmpty()) {
+                             IconButton(onClick = { searchQuery = "" }) {
+                                 Icon(Icons.Default.Close, contentDescription = "Limpiar búsqueda")
+                             }
+                         } else {
+                             Icon(Icons.Default.FilterList, null, modifier = Modifier.padding(end = 8.dp), tint = Color.Gray)
+                         }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -104,7 +104,7 @@ unfocusedBorderColor = Color.LightGray
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f)) {
                     items(filteredStudents) { student ->
                         StudentSelectItem(student = student, isSelected = student.id in selectedStudents, onSelect = {
                             selectedStudents = if (it) {
@@ -115,19 +115,20 @@ unfocusedBorderColor = Color.LightGray
                         })
                     }
                 }
-            }
-        }
-         Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.padding(16.dp).fillMaxSize()) {
-            Button(
-                onClick = { onSaveGroup(selectedStudents.toList()) },
-                enabled = selectedStudents.isNotEmpty(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                Text("Guardar Grupo")
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.Check, contentDescription = null)
+                
+                Button(
+                    onClick = { onSaveGroup(selectedStudents.toList()) },
+                    enabled = selectedStudents.isNotEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Guardar Grupo", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.Default.Check, null)
+                }
             }
         }
     }

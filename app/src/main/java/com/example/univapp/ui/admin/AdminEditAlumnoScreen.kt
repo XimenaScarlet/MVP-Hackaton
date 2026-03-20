@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +70,7 @@ fun AdminEditAlumnoScreen(
         }
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Editar Alumno", fontWeight = FontWeight.Bold) },
@@ -79,8 +81,7 @@ fun AdminEditAlumnoScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
-        },
-        containerColor = Color(0xFFF8F9FA)
+        }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -110,8 +111,22 @@ fun AdminEditAlumnoScreen(
                     ProfileImage(alumno?.id ?: "")
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    CustomOutlinedTextField(label = "Nombre", value = alumno?.nombre ?: "", onValueChange = { vm.onFieldChange("nombre", it) })
-                    CustomOutlinedTextField(label = "Teléfono", value = alumno?.telefono ?: "", onValueChange = { vm.onFieldChange("telefono", it) }, keyboardType = KeyboardType.Phone)
+                    ValidatedTextField(
+                        label = "Nombre",
+                        value = alumno?.nombre ?: "",
+                        onValueChange = { vm.onFieldChange("nombre", it) },
+                        maxLength = 70
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ValidatedTextField(
+                        label = "Teléfono",
+                        value = alumno?.telefono ?: "",
+                        onValueChange = { vm.onFieldChange("telefono", it) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        maxLength = 10
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Box(
                         modifier = Modifier
@@ -125,10 +140,16 @@ fun AdminEditAlumnoScreen(
                                     DropdownSelector(label = "Género", selectedValue = alumno?.genero ?: "", options = listOf("Femenino", "Masculino"), onValueSelected = { vm.onFieldChange("genero", it) })
                                 }
                                 Column(Modifier.weight(1f)) {
-                                    CustomOutlinedTextField(label = "Edad", value = alumno?.edad?.toString() ?: "", onValueChange = { vm.onFieldChange("edad", it) }, keyboardType = KeyboardType.Number)
+                                    ValidatedTextField(
+                                        label = "Edad",
+                                        value = alumno?.edad?.toString() ?: "",
+                                        onValueChange = { vm.onFieldChange("edad", it) },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        maxLength = 3
+                                    )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                             DatePickerField(label = "Fecha de Nacimiento", value = alumno?.fechaNacimiento ?: "", onValueChange = { vm.onFieldChange("fechaNacimiento", it) })
                         }
                     }
@@ -143,6 +164,7 @@ fun AdminEditAlumnoScreen(
                             vm.onFieldChange("carreraId", selectedId)
                         }
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     DropdownSelector(
                         label = "Grupo",
@@ -153,16 +175,31 @@ fun AdminEditAlumnoScreen(
                             vm.onFieldChange("grupoId", selectedId)
                         }
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     DropdownSelector(label = "Estatus Académico", selectedValue = alumno?.estatusAcademico ?: "", options = listOf("Regular", "Irregular"), onValueSelected = { vm.onFieldChange("estatusAcademico", it) })
+                    Spacer(modifier = Modifier.height(16.dp))
                     DatePickerField(label = "Fecha de Ingreso", value = alumno?.fechaIngreso ?: "", onValueChange = { vm.onFieldChange("fechaIngreso", it) })
 
                     Spacer(modifier = Modifier.height(24.dp))
                     Text("CONTACTO DE EMERGENCIA", modifier = Modifier.fillMaxWidth(), color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    CustomOutlinedTextField(label = "Nombre de Contacto", value = alumno?.nombreContacto ?: "", onValueChange = { vm.onFieldChange("nombreContacto", it) })
-                    CustomOutlinedTextField(label = "Teléfono de Emergencia", value = alumno?.telefonoEmergencia ?: "", onValueChange = { vm.onFieldChange("telefonoEmergencia", it) }, keyboardType = KeyboardType.Phone)
+                    ValidatedTextField(
+                        label = "Nombre de Contacto",
+                        value = alumno?.nombreContacto ?: "",
+                        onValueChange = { vm.onFieldChange("nombreContacto", it) },
+                        maxLength = 70
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ValidatedTextField(
+                        label = "Teléfono de Emergencia",
+                        value = alumno?.telefonoEmergencia ?: "",
+                        onValueChange = { vm.onFieldChange("telefonoEmergencia", it) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        maxLength = 10
+                    )
 
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
@@ -216,30 +253,6 @@ fun ProfileImage(id: String) {
 }
 
 @Composable
-fun CustomOutlinedTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    keyboardType: KeyboardType = KeyboardType.Text
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label, color = Color.Gray) },
-        modifier = modifier.fillMaxWidth().padding(bottom = 16.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = Color.LightGray,
-            focusedBorderColor = Color(0xFF6A5AE0),
-            unfocusedContainerColor = Color.White,
-            focusedContainerColor = Color.White
-        ),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType)
-    )
-}
-
-@Composable
 fun DatePickerField(
     label: String,
     value: String,
@@ -263,7 +276,7 @@ fun DatePickerField(
         onValueChange = { },
         label = { Text(label, color = Color.Gray) },
         readOnly = true,
-        modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }.padding(bottom = 16.dp),
+        modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() },
         trailingIcon = {
             Icon(Icons.Default.CalendarToday, contentDescription = "Select Date", tint = Color.Gray)
         },

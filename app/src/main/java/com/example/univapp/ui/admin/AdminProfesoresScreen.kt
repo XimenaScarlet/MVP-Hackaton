@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Carrera
 import com.example.univapp.data.Grupo
 import com.example.univapp.data.Profesor
+import com.example.univapp.ui.util.AppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +37,7 @@ fun AdminProfesoresScreen(
     onBack: () -> Unit,
     onAddManually: () -> Unit,
     onImportExcel: () -> Unit,
+    onEditProfesor: (String) -> Unit = {},
     vm: AdminProfesoresViewModel = viewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
@@ -45,8 +47,7 @@ fun AdminProfesoresScreen(
     val isCarreraSelected = uiState.selectedCarrera != null
     val isGrupoSelected = uiState.selectedGrupo != null
 
-    Scaffold(
-        containerColor = Color.White,
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Profesores", fontWeight = FontWeight.Bold) },
@@ -88,7 +89,7 @@ fun AdminProfesoresScreen(
             }
         }
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        Column(Modifier.fillMaxSize().background(Color.White).padding(padding)) {
             if (!isCarreraSelected) {
                 // Selector de Tipo (TSU / ING)
                 Row(
@@ -264,12 +265,12 @@ fun AdminProfesoresScreen(
                         }
                     } else if (uiState.profesores.isEmpty()) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No hay profesores en este grupo.")
+                            Text("No hay profesores registrados en esta carrera.")
                         }
                     } else {
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(uiState.profesores, key = { it.id }) { profesor ->
-                                ProfesorListItem(profesor = profesor, onClick = { /* TODO */ })
+                                ProfesorListItem(profesor = profesor, onClick = { onEditProfesor(profesor.id) })
                             }
                         }
                     }
@@ -384,7 +385,11 @@ private fun ProfesorListItem(profesor: Profesor, onClick: () -> Unit) {
                 Text(profesor.nombre, fontWeight = FontWeight.Bold)
                 Text(profesor.correo, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
             }
-            Button(onClick = {}, shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007BFF))) {
+            Button(
+                onClick = onClick, 
+                shape = RoundedCornerShape(8.dp), 
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007BFF))
+            ) {
                 Text("Editar", fontSize = 12.sp)
             }
         }

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
 
 @Composable
 fun SettingsScreen(
@@ -45,7 +46,6 @@ fun SettingsScreen(
     val notificaciones by vm.pushNotifications.collectAsState()
     var confirmLogout by remember { mutableStateOf(false) }
 
-    // Colores dinámicos
     val bgColor = if (dark) Color(0xFF0F172A) else Color(0xFFF9FAFB)
     val cardBg = if (dark) Color(0xFF1E293B) else Color.White
     val titleColor = if (dark) Color.White else Color(0xFF1A1C1E)
@@ -55,13 +55,12 @@ fun SettingsScreen(
     val iconTintColor = if (dark) Color(0xFF60A5FA) else Color(0xFF1D4ED8)
     val dividerColor = if (dark) Color(0xFF334155) else Color(0xFFF1F3F4)
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
+    AppScaffold { pv ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(bgColor)
+                .padding(pv)
                 .verticalScroll(scrollState)
         ) {
             // Header
@@ -90,7 +89,6 @@ fun SettingsScreen(
             }
 
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                // APARIENCIA
                 SettingsSectionTitle("APARIENCIA", sectionHeaderColor)
                 SettingsCard(cardBg) {
                     SettingsSwitchItem(
@@ -106,7 +104,6 @@ fun SettingsScreen(
                     )
                 }
 
-                // PREFERENCIAS
                 SettingsSectionTitle("PREFERENCIAS", sectionHeaderColor)
                 SettingsCard(cardBg) {
                     Column {
@@ -136,7 +133,6 @@ fun SettingsScreen(
                     }
                 }
 
-                // ALMACENAMIENTO
                 SettingsSectionTitle("ALMACENAMIENTO", sectionHeaderColor)
                 SettingsCard(cardBg) {
                     SettingsClickableItem(
@@ -155,36 +151,23 @@ fun SettingsScreen(
                     )
                 }
 
-                // ACERCA DE
                 SettingsSectionTitle("ACERCA DE", sectionHeaderColor)
                 SettingsCard(cardBg) {
                     Column {
                         SettingsInfoItem(
                             icon = Icons.Outlined.Info,
                             title = "Versión",
-                            subtitle = "UnivApp 1.2.4 Build 2024",
+                            subtitle = "MI UTC 1.2.4 Build 2024",
                             titleColor = titleColor,
                             subtitleColor = subtitleColor,
                             iconBoxColor = iconBoxColor,
                             iconTintColor = iconTintColor
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = dividerColor)
-                        SettingsClickableItem(
-                            icon = Icons.Outlined.Description,
-                            title = "Términos y Condiciones",
-                            trailingIcon = Icons.Default.OpenInNew,
-                            titleColor = titleColor,
-                            subtitleColor = subtitleColor,
-                            iconBoxColor = iconBoxColor,
-                            iconTintColor = iconTintColor,
-                            onClick = { /* Abrir términos */ }
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(48.dp))
 
-                // Logout Button
                 TextButton(
                     onClick = { confirmLogout = true },
                     modifier = Modifier.fillMaxWidth(),

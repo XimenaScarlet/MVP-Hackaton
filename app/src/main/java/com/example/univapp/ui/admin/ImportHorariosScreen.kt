@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +47,7 @@ fun ImportHorariosScreen(
         }
     )
 
-    Scaffold(
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Importar Horarios", fontWeight = FontWeight.Bold) },
@@ -57,14 +58,14 @@ fun ImportHorariosScreen(
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
-        },
-        containerColor = Color(0xFFF5F6F8),
+        }
     ) { padding ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F6F8))
                 .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize(),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             GuiaDeImportacionHorarios()
@@ -104,7 +105,7 @@ fun ImportHorariosScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.resetState() },
                 title = { Text("Importación Exitosa") },
-                text = { Text("${state.count} horarios han sido importados correctamente.") },
+                text = { Text("${state.result.totalProcessed} horarios han sido importados correctamente.") },
                 confirmButton = {
                     Button(onClick = { viewModel.resetState(); onBack() }) {
                         Text("Aceptar")

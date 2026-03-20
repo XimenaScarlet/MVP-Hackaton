@@ -3,6 +3,7 @@ package com.example.univapp.ui.admin
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,9 +16,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.ActivityLog
+import com.example.univapp.ui.util.AppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +39,41 @@ fun AdminActivityScreen(
 ) {
     val logs by vm.logs.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var selectedFilter by remember { mutableStateOf("Todos") }
 
-    Scaffold(
-        containerColor = Color.White,
+    val filteredLogs = if (selectedFilter == "Todos") logs else logs.filter { it.type == selectedFilter }
+    val types = listOf("Todos") + logs.map { it.type }.distinct()
+
+    if (showFilterDialog) {
+        AlertDialog(
+            onDismissRequest = { showFilterDialog = false },
+            title = { Text("Filtrar por tipo") },
+            text = {
+                Column {
+                    types.forEach { type ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = { 
+                                    selectedFilter = type
+                                    showFilterDialog = false
+                                })
+                                .padding(vertical = 8.dp)
+                        ) {
+                            RadioButton(selected = (selectedFilter == type), onClick = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(type)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showFilterDialog = false }) { Text("Cerrar") } }
+        )
+    }
+
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Registro de Actividad", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp) },
@@ -56,7 +88,7 @@ fun AdminActivityScreen(
         floatingActionButton = {
             if (logs.isNotEmpty()) {
                 FloatingActionButton(
-                    onClick = { /* TODO: Filter */ },
+                    onClick = { showFilterDialog = true },
                     containerColor = Color(0xFF673AB7),
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp)
@@ -69,15 +101,15 @@ fun AdminActivityScreen(
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Color(0xFF673AB7))
-            } else if (logs.isEmpty()) {
-                EmptyActivityState(onRefresh = { /* vm.refresh() */ })
+            } else if (filteredLogs.isEmpty()) {
+                EmptyActivityState(onRefresh = { /* vm.fetchActivityLogs() */ })
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(logs, key = { it.id }) { log ->
+                    items(filteredLogs, key = { it.id }) { log ->
                         ActivityLogItem(log = log)
                     }
                 }
@@ -95,9 +127,7 @@ private fun EmptyActivityState(onRefresh: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Visual circular con iconos
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(240.dp)) {
-            // Círculo punteado de fondo
             androidx.compose.foundation.Canvas(modifier = Modifier.size(200.dp)) {
                 drawCircle(
                     color = Color.LightGray.copy(alpha = 0.5f),
@@ -107,20 +137,14 @@ private fun EmptyActivityState(onRefresh: () -> Unit) {
                     )
                 )
             }
-            
-            // Icono de Historia central (Morado)
             Icon(
                 imageVector = Icons.Outlined.History,
                 contentDescription = null,
                 modifier = Modifier.size(100.dp),
                 tint = Color(0xFF958BCE)
             )
-            
-            // Card de Check (Verde) - Superior Derecha
             Surface(
-                modifier = Modifier
-                    .size(56.dp)
-                    .offset(x = 50.dp, y = (-40).dp),
+                modifier = Modifier.size(56.dp).offset(x = 50.dp, y = (-40).dp),
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFFD1FADF),
                 shadowElevation = 4.dp
@@ -129,12 +153,8 @@ private fun EmptyActivityState(onRefresh: () -> Unit) {
                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF039855), modifier = Modifier.size(24.dp))
                 }
             }
-            
-            // Card de Documento (Azul) - Inferior Izquierda
             Surface(
-                modifier = Modifier
-                    .size(50.dp)
-                    .offset(x = (-60).dp, y = 40.dp),
+                modifier = Modifier.size(50.dp).offset(x = (-60).dp, y = 40.dp),
                 shape = RoundedCornerShape(14.dp),
                 color = Color(0xFFD1E9FF),
                 shadowElevation = 4.dp
@@ -144,34 +164,12 @@ private fun EmptyActivityState(onRefresh: () -> Unit) {
                 }
             }
         }
-
         Spacer(Modifier.height(32.dp))
-        
-        Text(
-            "Sin actividad reciente",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF101828)
-        )
-        
+        Text("Sin actividad reciente", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = Color(0xFF101828))
         Spacer(Modifier.height(12.dp))
-        
-        Text(
-            "Aún no se han realizado acciones en el sistema. Las actualizaciones aparecerán aquí.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color(0xFF667085),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        
+        Text("Aún no se han realizado acciones en el sistema. Las actualizaciones aparecerán aquí.", style = MaterialTheme.typography.bodyLarge, color = Color(0xFF667085), textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
         Spacer(Modifier.height(48.dp))
-        
-        OutlinedButton(
-            onClick = onRefresh,
-            shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFEAECF0))
-        ) {
+        OutlinedButton(onClick = onRefresh, shape = RoundedCornerShape(24.dp), modifier = Modifier.height(48.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFEAECF0))) {
             Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(18.dp), tint = Color(0xFF344054))
             Spacer(Modifier.width(8.dp))
             Text("Actualizar registro", color = Color(0xFF344054), fontWeight = FontWeight.Bold)
@@ -188,13 +186,7 @@ private fun ActivityLogItem(log: ActivityLog) {
         border = BorderStroke(1.dp, Color(0xFFEAECF0))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF673AB7), modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(16.dp))

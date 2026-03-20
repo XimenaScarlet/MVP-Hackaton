@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Profesor
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,8 +57,7 @@ fun AddGroupDetailsScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color.White,
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Agregar Grupo", fontWeight = FontWeight.Bold) },
@@ -98,10 +98,12 @@ fun AddGroupDetailsScreen(
             Spacer(Modifier.height(16.dp))
 
             // Nombre del Grupo
-            CustomAddGroupField(
+            ValidatedTextField(
                 value = groupName,
                 onValueChange = { groupName = it },
-                placeholder = "Nombre del Grupo"
+                label = "Nombre del Grupo",
+                maxLength = 20,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(24.dp))
@@ -181,22 +183,16 @@ fun AddGroupDetailsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("CAPACIDAD MÁX.", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
+                    ValidatedTextField(
                         value = capacidad,
                         onValueChange = { newValue -> 
                             if (newValue.length <= 2) {
                                 capacidad = newValue.filter { c -> c.isDigit() }
                             }
                         },
-                        placeholder = { Text("Ej. 35", color = Color.Gray) },
-                        leadingIcon = { Icon(Icons.Default.Groups, null, tint = Color.Gray, modifier = Modifier.size(20.dp)) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF7F7F9),
-                            focusedContainerColor = Color(0xFFF7F7F9),
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Color(0xFF5E49B3)
-                        ),
+                        label = "Ej. 35",
+                        maxLength = 2,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -228,27 +224,6 @@ fun AddGroupDetailsScreen(
             Spacer(Modifier.height(120.dp))
         }
     }
-}
-
-@Composable
-private fun CustomAddGroupField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder, color = Color.Gray) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedContainerColor = Color(0xFFF7F7F9),
-            focusedContainerColor = Color(0xFFF7F7F9),
-            unfocusedBorderColor = Color.Transparent,
-            focusedBorderColor = Color(0xFF5E49B3)
-        )
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

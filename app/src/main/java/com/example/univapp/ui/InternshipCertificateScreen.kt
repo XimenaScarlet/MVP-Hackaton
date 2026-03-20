@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,138 +62,106 @@ fun InternshipCertificateScreen(
         )
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = cardBg,
-                shadowElevation = 0.dp
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+    AppScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Constancia para Prácticas", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Atrás", modifier = Modifier.size(32.dp), tint = if (dark) Color.White else Color(0xFF004696))
                     }
-                    Text("Constancia para Prácticas", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor)
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = cardBg)
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bgColor)
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp)
+        ) {
+            Text("Datos de la empresa", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor)
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text("Nombre de la empresa (Requerido)", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = subtitleColor)
+            Spacer(modifier = Modifier.height(8.dp))
+            ValidatedTextField(
+                value = companyName,
+                onValueChange = { companyName = it },
+                label = "Ingresa el nombre de la empresa",
+                maxLength = 80
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Ciudad (Opcional)", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = subtitleColor)
+            Spacer(modifier = Modifier.height(8.dp))
+            ValidatedTextField(
+                value = city,
+                onValueChange = { city = it },
+                label = "Ingresa la ciudad",
+                maxLength = 50
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text("A quién va dirigida", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor)
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text("Nombre del responsable o departamento", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = subtitleColor)
+            Spacer(modifier = Modifier.height(8.dp))
+            ValidatedTextField(
+                value = directedTo,
+                onValueChange = { directedTo = it },
+                label = "Ej. Recursos Humanos, Lic. Juan Pérez, etc",
+                maxLength = 80
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Info Box
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = if (dark) Color(0xFF1E3A8A).copy(alpha = 0.3f) else Color(0xFFEEF2FF)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Este documento se entrega firmado y sellado por la institución.", fontSize = 14.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Schedule, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Tiempo estimado: 3 a 5 días hábiles.", fontSize = 14.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Payments, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Costo: Sin costo.", fontSize = 14.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
+                    }
                 }
             }
 
-            Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Button(
+                onClick = { if (companyName.isNotBlank()) showConfirmDialog = true },
+                enabled = !isLoading && companyName.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF2563EB)),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
             ) {
-                Text("Datos de la empresa", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor)
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text("Nombre de la empresa (Requerido)", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = subtitleColor)
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = companyName,
-                    onValueChange = { companyName = it },
-                    placeholder = { Text("Ingresa el nombre de la empresa", color = subtitleColor.copy(alpha = 0.6f)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = cardBg,
-                        unfocusedContainerColor = cardBg,
-                        focusedTextColor = titleColor,
-                        unfocusedTextColor = titleColor,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("Ciudad (Opcional)", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = subtitleColor)
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = city,
-                    onValueChange = { city = it },
-                    placeholder = { Text("Ingresa la ciudad", color = subtitleColor.copy(alpha = 0.6f)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = cardBg,
-                        unfocusedContainerColor = cardBg,
-                        focusedTextColor = titleColor,
-                        unfocusedTextColor = titleColor,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Text("A quién va dirigida", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor)
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text("Nombre del responsable o departamento", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = subtitleColor)
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = directedTo,
-                    onValueChange = { directedTo = it },
-                    placeholder = { Text("Ej. Recursos Humanos, Lic. Juan Pérez, etc", color = subtitleColor.copy(alpha = 0.6f)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = cardBg,
-                        unfocusedContainerColor = cardBg,
-                        focusedTextColor = titleColor,
-                        unfocusedTextColor = titleColor,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Info Box
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = if (dark) Color(0xFF1E3A8A).copy(alpha = 0.3f) else Color(0xFFEEF2FF)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Este documento se entrega firmado y sellado por la institución.", fontSize = 14.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Schedule, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Tiempo estimado: 3 a 5 días hábiles.", fontSize = 14.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Payments, null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Costo: Sin costo.", fontSize = 14.sp, color = if (dark) Color.White else Color(0xFF1E3A8A))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(40.dp))
-
-                Button(
-                    onClick = { if (companyName.isNotBlank()) showConfirmDialog = true },
-                    enabled = !isLoading && companyName.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF2563EB)),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text("Solicitar constancia", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                    }
+                if (isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Solicitar constancia", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

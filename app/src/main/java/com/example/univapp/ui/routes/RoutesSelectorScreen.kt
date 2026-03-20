@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.univapp.ui.util.AppScaffold
 
 @Composable
 fun RoutesSelectorScreen(
@@ -21,9 +22,9 @@ fun RoutesSelectorScreen(
     onOpenSaltillo: () -> Unit,
     onOpenRamos: () -> Unit
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = {
-            SmallTopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Selecciona tu Ruta") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

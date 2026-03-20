@@ -7,6 +7,11 @@ import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.Alumno
+import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Dispatchers
@@ -27,136 +32,196 @@ class AdminImportAlumnosViewModel(application: Application) : AndroidViewModel(a
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState
 
+    private val db = Firebase.firestore
+    private val TAG = "IMPORT_ALUMNOS"
+
+    private fun getOrCreateSecondaryAuth(): FirebaseAuth {
+        val context = getApplication<Application>().applicationContext
+        val options = FirebaseApp.getInstance().options
+        val secondaryApp = try {
+            FirebaseApp.initializeApp(context, options, "secondary")
+        } catch (e: Exception) {
+            try {
+                FirebaseApp.getInstance("secondary")
+            } catch (e2: Exception) {
+                FirebaseApp.initializeApp(context, options, "secondary")
+            }
+        }
+        return FirebaseAuth.getInstance(secondaryApp)
+    }
+
     fun importAlumnosFromUri(uri: Uri, inputStream: InputStream?) {
         viewModelScope.launch {
             _importState.value = ImportState.Loading
-            
+
             try {
-                val result = withContext(Dispatchers.IO) {
+                val finalResult = withContext(Dispatchers.IO) {
                     val context = getApplication<Application>().applicationContext
-                    val tempFile = File(context.cacheDir, "import_alumnos_fast.xlsx")
-                    
+                    val tempFile = File(context.cacheDir, "import_alumnos_secure.xlsx")
+
+                    val secondaryAuth = getOrCreateSecondaryAuth()
+
                     try {
                         inputStream?.use { input ->
-                            FileOutputStream(tempFile).use { output ->
-                                input.copyTo(output)
+                            FileOutputStream(tempFile).use { output -> input.copyTo(output) }
+                        }
+
+                        if (!tempFile.exists() || tempFile.length() == 0L) throw Exception("Archivo vacío o no válido.")
+
+                        val alumnosRaw = leerAlumnosDesdeExcel(tempFile)
+                        if (alumnosRaw.isEmpty()) throw Exception("No se encontraron datos en el archivo.")
+
+                        var createdInAuthCount = 0
+                        var existingInAuthCount = 0
+                        var authFailedCount = 0
+                        var skippedCount = 0
+                        val rowErrors = mutableListOf<String>()
+                        val firestoreBatchList = mutableListOf<Alumno>()
+
+                        // 1. Verificar existentes en Firestore por batch (máximo 10 por whereIn)
+                        val matriculasFromExcel = alumnosRaw.mapNotNull { it.matricula?.trim() }.filter { it.isNotBlank() }.distinct()
+                        val existingFirestoreMatriculas = mutableSetOf<String>()
+                        
+                        matriculasFromExcel.chunked(10).forEach { chunk ->
+                            try {
+                                val querySnapshot = db.collection("alumnos")
+                                    .whereIn(FieldPath.documentId(), chunk)
+                                    .get().await()
+                                querySnapshot.documents.forEach { doc ->
+                                    existingFirestoreMatriculas.add(doc.id)
+                                }
+                            } catch(e: Exception) {
+                                Log.e(TAG, "Error verificando duplicados en Firestore: ${e.message}")
                             }
                         }
 
-                        if (!tempFile.exists() || tempFile.length() == 0L) {
-                            throw Exception("No se pudo crear el archivo temporal o está vacío.")
-                        }
+                        // 2. Procesar cada alumno
+                        alumnosRaw.forEachIndexed { index, rawAlumno ->
+                            val rowNum = index + 2
+                            val matricula = rawAlumno.matricula?.trim() ?: ""
+                            val correo = rawAlumno.correo?.trim() ?: ""
+                            val nombre = rawAlumno.nombre?.trim() ?: ""
+                            val id = matricula
 
-                        val alumnos = leerAlumnosDesdeExcel(tempFile)
+                            if (matricula.isBlank()) return@forEachIndexed
 
-                        if (alumnos.isEmpty()) {
-                            throw Exception("No se encontraron filas de datos legibles.")
-                        }
-
-                        // VERIFICACIÓN DE DUPLICADOS
-                        val matriculasEnExcel = alumnos.mapNotNull { it.matricula }.filter { it.isNotBlank() }
-                        if (matriculasEnExcel.isNotEmpty()) {
-                            val existingAlumnos = Firebase.firestore.collection("alumnos")
-                                .whereIn("matricula", matriculasEnExcel)
-                                .get()
-                                .await()
-                            
-                            if (!existingAlumnos.isEmpty) {
-                                val existingMatricula = existingAlumnos.documents.first().getString("matricula")
-                                throw Exception("Error: La matrícula '$existingMatricula' ya existe en la base de datos.")
+                            // Evitar duplicados en Firestore
+                            if (existingFirestoreMatriculas.contains(id)) {
+                                rowErrors.add("Fila $rowNum: Matrícula '$matricula' ya existe en Firestore.")
+                                skippedCount++
+                                return@forEachIndexed
                             }
-                        }
 
-                        val validAlumnos = mutableListOf<Alumno>()
-                        val errors = mutableListOf<String>()
+                            // Validaciones
+                            if (nombre.isBlank()) {
+                                rowErrors.add("Fila $rowNum: Nombre vacío.")
+                                return@forEachIndexed
+                            }
+                            if (correo.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+                                rowErrors.add("Fila $rowNum: Correo '$correo' inválido.")
+                                return@forEachIndexed
+                            }
+                            if (matricula.length < 6) {
+                                rowErrors.add("Fila $rowNum: Matrícula debe tener >= 6 caracteres (para password)." )
+                                return@forEachIndexed
+                            }
 
-                        alumnos.forEachIndexed { index, alumno ->
-                            val rowNum = index + 2 
-                            val matricula = alumno.matricula?.trim() ?: ""
-                            
-                            if (matricula.isEmpty()) return@forEachIndexed
-
-                            val safeDocId = matricula.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
-
-                            when {
-                                safeDocId.isEmpty() -> errors.add("Fila $rowNum: Matrícula inválida.")
-                                alumno.nombre.isNullOrBlank() -> errors.add("Fila $rowNum: Nombre vacío.")
-                                alumno.correo.isNullOrBlank() || !Patterns.EMAIL_ADDRESS.matcher(alumno.correo!!).matches() -> 
-                                    errors.add("Fila $rowNum: Correo inválido.")
-                                else -> {
-                                    validAlumnos.add(alumno.copy(id = safeDocId, matricula = matricula))
+                            // Crear en Firebase Auth usando cuenta secundaria
+                            var authOk = false
+                            try {
+                                secondaryAuth.createUserWithEmailAndPassword(correo, matricula).await()
+                                secondaryAuth.signOut() // Desloguear al alumno de la app secundaria
+                                createdInAuthCount++
+                                authOk = true
+                                Log.d(TAG, "Usuario creado en Auth: $correo")
+                            } catch (e: Exception) {
+                                if (e is FirebaseAuthUserCollisionException || e.message?.contains("already in use") == true) {
+                                    existingInAuthCount++
+                                    authOk = true
+                                    Log.d(TAG, "Usuario ya existe en Auth: $correo")
+                                } else {
+                                    authFailedCount++
+                                    rowErrors.add("Fila $rowNum: Error Auth ($correo): ${e.message}")
+                                    Log.e(TAG, "Fila $rowNum: Error creando usuario en Auth", e)
                                 }
                             }
+
+                            if (authOk) {
+                                firestoreBatchList.add(rawAlumno.copy(id = id, matricula = matricula, correo = correo))
+                            }
                         }
 
-                        if (validAlumnos.isEmpty()) {
-                            throw Exception("No se encontraron registros válidos para importar.\n${errors.firstOrNull() ?: ""}")
+                        // 3. Guardar en Firestore por batch
+                        if (firestoreBatchList.isNotEmpty()) {
+                            firestoreBatchList.chunked(450).forEach { chunk ->
+                                db.runBatch { batch ->
+                                    chunk.forEach { alumno ->
+                                        val docRef = db.collection("alumnos").document(alumno.id)
+                                        batch.set(docRef, alumno, SetOptions.merge())
+                                    }
+                                }.await()
+                            }
                         }
 
-                        val db = Firebase.firestore
-                        val chunks = validAlumnos.chunked(450)
-                        var processedCount = 0
+                        // Generar resumen y meterlo como primeras líneas en rowErrors
+                        val summary = mutableListOf<String>()
+                        summary.add("--- RESUMEN DE IMPORTACIÓN ---")
+                        summary.add("• Firestore importados: ${firestoreBatchList.size}")
+                        summary.add("• Auth creados: $createdInAuthCount")
+                        summary.add("• Auth existentes: $existingInAuthCount")
+                        summary.add("• Auth fallidos: $authFailedCount")
+                        summary.add("• Omitidos (ya en Firestore): $skippedCount")
+                        summary.add("------------------------------------")
+                        
+                        val finalRowErrors = summary + rowErrors
 
-                        chunks.forEach { chunk ->
-                            db.runBatch { batch ->
-                                chunk.forEach { a ->
-                                    val docRef = db.collection("alumnos").document(a.id)
-                                    batch.set(docRef, a)
-                                }
-                            }.await()
-                            processedCount += chunk.size
-                        }
-
-                        ImportResult(processedCount, errors)
+                        ImportResult(
+                            totalProcessed = firestoreBatchList.size,
+                            createdInAuth = createdInAuthCount,
+                            existingInAuth = existingInAuthCount,
+                            rowErrors = finalRowErrors
+                        )
 
                     } finally {
                         if (tempFile.exists()) tempFile.delete()
                     }
                 }
 
-                _importState.value = ImportState.Success(result.count, result.rowErrors)
+                _importState.value = ImportState.Success(finalResult)
 
             } catch (t: Throwable) {
-                Log.e("ImportExcel", "Error fatal", t)
+                Log.e(TAG, "Error crítico en la importación", t)
                 _importState.value = ImportState.Error(t.message ?: "Error desconocido.")
             }
         }
     }
 
     private fun leerAlumnosDesdeExcel(file: File): List<Alumno> {
-        FileInputStream(file).use { fis ->
+        return FileInputStream(file).use { fis ->
             val wb = ReadableWorkbook(fis)
             val sheet = wb.firstSheet ?: return emptyList()
-            val alumnos = mutableListOf<Alumno>()
+            val list = mutableListOf<Alumno>()
 
             sheet.openStream().use { rows ->
-                rows.asSequence().drop(1).forEach { row -> 
+                rows.asSequence().drop(1).forEach { row ->
                     val matricula = row.getCellText(0)?.trim()
                     val nombre = row.getCellText(1)?.trim()
                     val correo = row.getCellText(2)?.trim()
                     val carreraId = row.getCellText(3)?.trim()
                     val grupoId = row.getCellText(4)?.trim()
 
-                    if (matricula.isNullOrBlank() && nombre.isNullOrBlank() && correo.isNullOrBlank()) return@forEach
-
-                    alumnos.add(Alumno(matricula = matricula, nombre = nombre, correo = correo, carreraId = carreraId, grupoId = grupoId))
+                    if (!matricula.isNullOrBlank()) {
+                        list.add(Alumno(matricula = matricula, nombre = nombre, correo = correo, carreraId = carreraId, grupoId = grupoId))
+                    }
                 }
             }
-            return alumnos
+            list
         }
     }
 
     private fun org.dhatim.fastexcel.reader.Row.getCellText(index: Int): String? {
         val cell = getCell(index) ?: return null
-        return when (cell.type) {
-            org.dhatim.fastexcel.reader.CellType.STRING -> cell.asString()
-            org.dhatim.fastexcel.reader.CellType.NUMBER -> {
-                val n = cell.asNumber().toDouble()
-                if (n % 1.0 == 0.0) n.toLong().toString() else n.toString()
-            }
-            org.dhatim.fastexcel.reader.CellType.BOOLEAN -> cell.asBoolean().toString()
-            else -> cell.text
-        }
+        return cell.text?.trim()
     }
 
     fun resetState() { _importState.value = ImportState.Idle }

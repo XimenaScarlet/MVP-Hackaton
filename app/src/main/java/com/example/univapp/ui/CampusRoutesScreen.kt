@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.univapp.ui.util.AppScaffold
 
 @Composable
 fun CampusRoutesScreen(
@@ -25,7 +26,7 @@ fun CampusRoutesScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0: Rutas, 1: Mapa, 2: Ajustes
 
-    Scaffold(
+    AppScaffold(
         topBar = {
             SmallTopAppBar(
                 title = {
@@ -64,30 +65,26 @@ fun CampusRoutesScreen(
             }
         }
     ) { pv ->
-        when (selectedTab) {
-            0 -> RoutesList(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF6F8FA))
-                    .padding(pv)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                onTapSaltillo = onTapSaltillo,
-                onTapRamos = onTapRamos
-            )
-            1 -> MapPlaceholder(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF6F8FA))
-                    .padding(pv)
-                    .padding(16.dp)
-            )
-            2 -> SettingsPlaceholder(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF6F8FA))
-                    .padding(pv)
-                    .padding(16.dp)
-            )
+        Box(Modifier.fillMaxSize().padding(pv).background(Color(0xFFF6F8FA))) {
+            when (selectedTab) {
+                0 -> RoutesList(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    onTapSaltillo = onTapSaltillo,
+                    onTapRamos = onTapRamos
+                )
+                1 -> MapPlaceholder(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                )
+                2 -> SettingsPlaceholder(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                )
+            }
         }
     }
 }

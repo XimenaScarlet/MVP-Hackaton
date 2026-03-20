@@ -21,15 +21,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.univapp.ui.util.AppScaffold
 
 @Composable
 fun PsychologicalSupportScreen(
     onBack: () -> Unit = {},
-    onBook: () -> Unit = {},     // <-- NUEVO: navega a la pantalla de agenda
+    onBook: () -> Unit = {},
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = {
-            SmallTopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Apoyo Psicológico") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -49,7 +50,7 @@ fun PsychologicalSupportScreen(
         ) {
             // CTA
             Button(
-                onClick = onBook,   // <-- ahora sí abre la agenda
+                onClick = onBook,
                 shape = RoundedCornerShape(28.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -61,7 +62,7 @@ fun PsychologicalSupportScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // Avatar (placeholder con iniciales)
+            // Avatar
             Surface(
                 color = Color.White,
                 shape = CircleShape,
@@ -96,7 +97,7 @@ fun PsychologicalSupportScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // Tarjeta de info (horario + contacto)
+            // Tarjeta de info
             ElevatedCard(
                 shape = RoundedCornerShape(22.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -115,7 +116,7 @@ fun PsychologicalSupportScreen(
                         }
                     }
 
-                    Divider(Modifier.padding(vertical = 14.dp))
+                    HorizontalDivider(Modifier.padding(vertical = 14.dp))
 
                     Text("Contacto", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF0F172A))
                     Spacer(Modifier.height(10.dp))

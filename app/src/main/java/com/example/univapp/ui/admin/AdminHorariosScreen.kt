@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Carrera
 import com.example.univapp.data.Grupo
 import com.example.univapp.data.Horario
+import com.example.univapp.ui.util.AppScaffold
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -54,8 +55,7 @@ fun AdminHorariosScreen(
 
     var selectedType by remember { mutableStateOf("TSU") }
 
-    Scaffold(
-        containerColor = Color.White,
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Horarios", fontWeight = FontWeight.Bold) },
@@ -99,7 +99,7 @@ fun AdminHorariosScreen(
             }
         }
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        Column(Modifier.fillMaxSize().background(Color.White).padding(padding)) {
             if (!isCarreraSelected) {
                 // Selector de Tipo (TSU / ING)
                 Row(

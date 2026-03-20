@@ -62,7 +62,7 @@ fun AcademicHistoryScreen(
                         )
                     }
                     Text(
-                        text = "Kardex",
+                        text = "Historial Académico",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1A1C1E)

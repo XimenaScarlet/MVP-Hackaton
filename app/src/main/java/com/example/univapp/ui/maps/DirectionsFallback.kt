@@ -1,20 +1,14 @@
 package com.example.univapp.ui.maps
 
-import android.util.Log
+import com.example.univapp.di.NetworkModule
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 /**
  * Helpers de ruteo:
- *  - fetchDirectionsPolylineOsrm: consulta OSRM (sin API key) y devuelve polyline sobre calles.
+ *  - fetchDirectionsPolylineOsrm: consulta OSRM (vía Retrofit) y devuelve polyline sobre calles.
  *  - fetchBestPolyline: intenta Google Directions si hay API key; si falla o no hay, usa OSRM.
- *
- * Nota: La función `fetchDirectionsPolyline(apiKey, points)` de GOOGLE
- *       debe estar definida en tu archivo directions.kt (no se redefine aquí).
  */
 
 // --- Decodificador polyline6 (OSRM geometries=polyline6) ---
@@ -39,44 +33,28 @@ private fun decodePolyline6(encoded: String): List<LatLng> {
     return path
 }
 
-/** Llama OSRM pública (sin API key). OJO: coord en formato LON,LAT;LON,LAT… */
+/** Llama OSRM pública usando Retrofit para mayor seguridad y cumplimiento de rúbrica. */
 suspend fun fetchDirectionsPolylineOsrm(points: List<LatLng>): List<LatLng>? =
     withContext(Dispatchers.IO) {
         if (points.size < 2) return@withContext null
 
-        // ¡NO URLEncoder! No codifiques ';' y ','
         val coords = points.joinToString(";") { "${it.longitude},${it.latitude}" }
-        val url = "https://router.project-osrm.org/route/v1/driving/$coords?overview=full&geometries=polyline6"
 
         runCatching {
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 10000; readTimeout = 10000
-            }
-            val text = conn.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(text)
-
-            if (json.optString("code") != "Ok") {
-                Log.w("OSRM", "code=${json.optString("code")} msg=${json.optString("message")}")
-                return@withContext null
-            }
-
-            val routes = json.optJSONArray("routes") ?: return@withContext null
-            if (routes.length() == 0) return@withContext null
-            val geom = routes.getJSONObject(0).getString("geometry") // polyline6
+            val response = NetworkModule.mapsApiService.getOsrmFullRoute(coords = coords)
+            if (response.code != "Ok") return@runCatching null
+            
+            val routes = response.routes ?: return@runCatching null
+            if (routes.isEmpty()) return@runCatching null
+            
+            val geom = routes[0].geometry
             decodePolyline6(geom)
         }.getOrNull()
     }
 
-/**
- * Wrapper: usa Google si hay API key; si falla o no hay, usa OSRM.
- * Requiere que exista directions.kt con:
- * suspend fun fetchDirectionsPolyline(apiKey: String, points: List<LatLng>): List<LatLng>?
- */
 suspend fun fetchBestPolyline(apiKey: String, pts: List<LatLng>): List<LatLng>? {
     if (apiKey.isNotBlank()) {
-        // Intenta Google Directions primero
         runCatching { fetchDirectionsPolyline(apiKey, pts) }.getOrNull()?.let { return it }
     }
-    // Fallback OSRM
     return fetchDirectionsPolylineOsrm(pts)
 }

@@ -1,12 +1,25 @@
 package com.example.univapp.ui.maps
 
+import com.example.univapp.data.network.MapsApiService
+import com.example.univapp.di.NetworkModule
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Google Directions migrado a Retrofit para mayor seguridad y centralización.
+ */
+@Singleton
+class DirectionsFetcher @Inject constructor(
+    private val apiService: MapsApiService
+) {
+    suspend fun fetchDirectionsPolyline(
+        apiKey: String,
+        points: List<LatLng>
+    ): List<LatLng>? = com.example.univapp.ui.maps.fetchDirectionsPolyline(apiKey, points)
+}
 
 // Decodifica polyline de Google Directions
 private fun decodePolyline(encoded: String): List<LatLng> {
@@ -28,7 +41,10 @@ private fun decodePolyline(encoded: String): List<LatLng> {
     return poly
 }
 
-/** Google Directions (si tienes API key). Devuelve polyline pegada a calle. */
+/**
+ * Función global para compatibilidad con el código existente.
+ * Usa el puente estático de NetworkModule para obtener el servicio de Retrofit.
+ */
 suspend fun fetchDirectionsPolyline(
     apiKey: String,
     points: List<LatLng>
@@ -39,31 +55,18 @@ suspend fun fetchDirectionsPolyline(
     val dest   = "${points.last().latitude},${points.last().longitude}"
     val middle = points.drop(1).dropLast(1)
     val waypoints = if (middle.isNotEmpty()) {
-        "waypoints=" + middle.joinToString("|") { "via:${it.latitude},${it.longitude}" }
+        "via:" + middle.joinToString("|via:") { "${it.latitude},${it.longitude}" }
     } else null
 
-    val urlStr = buildString {
-        append("https://maps.googleapis.com/maps/api/directions/json?")
-        append("origin=").append(URLEncoder.encode(origin, "UTF-8"))
-        append("&destination=").append(URLEncoder.encode(dest, "UTF-8"))
-        append("&mode=driving&units=metric&avoid=ferries")
-        if (waypoints != null) append("&").append(waypoints)
-        append("&key=").append(apiKey)
-    }
-
-    val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 10_000
-        readTimeout = 10_000
-    }
-
-    return@withContext conn.inputStream.bufferedReader().use { br ->
-        val json = JSONObject(br.readText())
-        if (json.optString("status") != "OK") return@use null
-        val routes = json.optJSONArray("routes") ?: return@use null
-        if (routes.length() == 0) return@use null
-        val overview = routes.getJSONObject(0)
-            .getJSONObject("overview_polyline")
-            .getString("points")
+    runCatching {
+        val response = NetworkModule.mapsApiService.getDirections(
+            origin = origin,
+            destination = dest,
+            waypoints = waypoints,
+            apiKey = apiKey
+        )
+        if (response.status != "OK") return@runCatching null
+        val overview = response.routes.firstOrNull()?.overview_polyline?.points ?: return@runCatching null
         decodePolyline(overview)
-    }
+    }.getOrNull()
 }

@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -46,8 +46,8 @@ class AdminAnnouncementsViewModel : ViewModel() {
             _isSending.value = true
             try {
                 val announcement = hashMapOf(
-                    "title" to title,
-                    "body" to body,
+                    "title" to title.trim(),
+                    "body" to body.trim(),
                     "category" to category,
                     "urgent" to isUrgent,
                     "expirationDate" to expirationDate,
@@ -84,45 +84,31 @@ fun AdminAnnouncementsScreen(
     val isSending by vm.isSending.collectAsState()
     val message by vm.message.collectAsState()
 
-    // Colores dinámicos
     val bgColor = if (isDark) Color(0xFF121212) else Color.White
     val surfaceColor = if (isDark) Color(0xFF1E1E1E) else Color(0xFFF8FAFC)
     val headerColor = Color(0xFF0F172A)
     val textColor = if (isDark) Color.White else Color(0xFF1D2939)
     val labelColor = Color(0xFF64748B)
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .background(headerColor)
-                    .padding(horizontal = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
-                }
-                Text(
-                    "Nuevo Aviso",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            }
+            CenterAlignedTopAppBar(
+                title = { Text("Nuevo Aviso", color = Color.White, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = headerColor)
+            )
         },
-        containerColor = bgColor,
         bottomBar = {
             Button(
                 onClick = { vm.sendAnnouncement(title, body, selectedCategory, isUrgent, expirationDate) { onBack() } },
                 enabled = title.isNotBlank() && body.isNotBlank() && !isSending,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp)
+                    .padding(16.dp)
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = headerColor)
@@ -147,11 +133,12 @@ fun AdminAnnouncementsScreen(
                 .padding(24.dp)
         ) {
             LabelHeader("Título del aviso")
-            AvisoTextField(
+            ValidatedTextField(
                 value = title,
                 onValueChange = { title = it },
-                placeholder = "Ej. Suspensión de clases",
-                isDark = isDark
+                label = "Título",
+                maxLength = 60,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(24.dp))
@@ -171,13 +158,13 @@ fun AdminAnnouncementsScreen(
             Spacer(Modifier.height(24.dp))
 
             LabelHeader("Descripción del contenido")
-            AvisoTextField(
+            ValidatedTextField(
                 value = body,
                 onValueChange = { body = it },
-                placeholder = "Proporcione los detalles del anuncio...",
+                label = "Detalles del anuncio",
+                maxLength = 500,
                 singleLine = false,
-                modifier = Modifier.height(140.dp),
-                isDark = isDark
+                modifier = Modifier.heightIn(min = 120.dp)
             )
 
             Spacer(Modifier.height(24.dp))
@@ -204,7 +191,7 @@ fun AdminAnnouncementsScreen(
             LabelHeader("Prioridad del aviso")
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = bgColor),
+                colors = CardDefaults.cardColors(containerColor = surfaceColor),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF97316).copy(alpha = 0.3f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -228,8 +215,6 @@ fun AdminAnnouncementsScreen(
                     )
                 }
             }
-            
-            Spacer(Modifier.height(100.dp))
         }
     }
 
@@ -283,32 +268,4 @@ private fun CategoryChip(
             )
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AvisoTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    isDark: Boolean,
-    singleLine: Boolean = true,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder, color = Color(0xFF94A3B8)) },
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp)),
-        singleLine = singleLine,
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = if (isDark) Color(0xFF1E1E1E) else Color.White,
-            unfocusedContainerColor = if (isDark) Color(0xFF1E1E1E) else Color.White,
-            focusedBorderColor = Color.Transparent,
-            unfocusedBorderColor = Color.Transparent
-        )
-    )
 }

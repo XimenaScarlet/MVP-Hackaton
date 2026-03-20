@@ -18,10 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -46,16 +47,16 @@ fun PsychAppointmentScreen(
     val disabledTimes = setOf("11:00")
     var selectedTime by remember { mutableStateOf("14:00") }
 
-    var reason by remember { mutableStateOf(TextFieldValue()) }
-    var notes by remember { mutableStateOf(TextFieldValue()) }
+    var reason by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
 
     // --- Diálogos ---
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
-            SmallTopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("Agendar Cita") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -64,14 +65,11 @@ fun PsychAppointmentScreen(
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-
-        // Botón fijo abajo
         bottomBar = {
             Surface(tonalElevation = 2.dp) {
                 Button(
                     onClick = {
-                        if (reason.text.isBlank()) {
+                        if (reason.isBlank()) {
                             scope.launch { snackbarHostState.showSnackbar("Escribe el motivo de la cita.") }
                         } else {
                             showConfirmDialog = true
@@ -171,25 +169,20 @@ fun PsychAppointmentScreen(
             }
 
             // -------- Campos motivo y notas --------
-            OutlinedTextField(
+            ValidatedTextField(
                 value = reason,
                 onValueChange = { reason = it },
-                label = { Text("Motivo de la cita") },
-                placeholder = { Text("Ej: Estrés académico, ansiedad...") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                singleLine = true
+                label = "Motivo de la cita",
+                maxLength = 100
             )
 
-            OutlinedTextField(
+            ValidatedTextField(
                 value = notes,
                 onValueChange = { notes = it },
-                label = { Text("Notas adicionales (opcional)") },
-                placeholder = { Text("Cualquier información que consideres relevante...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 120.dp),
-                shape = RoundedCornerShape(16.dp)
+                label = "Notas adicionales (opcional)",
+                maxLength = 300,
+                singleLine = false,
+                modifier = Modifier.heightIn(min = 120.dp)
             )
         }
     }

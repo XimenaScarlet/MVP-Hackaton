@@ -21,11 +21,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.R
+import com.example.univapp.ui.util.AppScaffold
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,51 +57,38 @@ fun MedicalAppointmentSummaryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Observar errores y mostrarlos
     LaunchedEffect(error) {
         error?.let {
             scope.launch {
                 snackbarHostState.showSnackbar(it)
-                // Opcional: limpiar error en VM después de mostrarlo si no tienes una función específica
-                // Aunque es mejor llamar a vm.clearError() manualmente si fuera necesario.
             }
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = bgColor
+    AppScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Resumen de Cita", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Atrás", modifier = Modifier.size(28.dp), tint = titleColor)
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = cardBg)
+            )
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(bgColor)
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 16.dp, bottom = 32.dp),
+                .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "Atrás",
-                        modifier = Modifier.size(28.dp),
-                        tint = titleColor
-                    )
-                }
-                Text(
-                    text = "Resumen de Cita",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = titleColor
-                )
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             // Step Indicator
@@ -218,7 +205,7 @@ fun MedicalAppointmentSummaryScreen(
                 text = "Al confirmar, recibirás una notificación de recordatorio 15 minutos antes de tu cita.",
                 fontSize = 12.sp,
                 color = subtitleColor,
-                textAlign = TextAlign.Center,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
         }

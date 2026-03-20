@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.MedicalAppointment
+import com.example.univapp.ui.util.AppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,7 @@ fun MyAppointmentsScreen(
     val textColor = if (dark) Color(0xFFE2E8F0) else Color(0xFF1F2937)
     val subtitleColor = if (dark) Color(0xFF94A3B8) else Color(0xFF6B7280)
 
-    Scaffold(
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Mis Citas", fontWeight = FontWeight.Bold) },
@@ -54,25 +55,26 @@ fun MyAppointmentsScreen(
                     navigationIconContentColor = titleColor
                 )
             )
-        },
-        containerColor = bgColor
+        }
     ) { padding ->
-        if (appointments.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.EventBusy, null, modifier = Modifier.size(64.dp), tint = subtitleColor)
-                    Spacer(Modifier.height(16.dp))
-                    Text("No tienes citas agendadas", color = subtitleColor, fontSize = 16.sp)
+        Box(modifier = Modifier.fillMaxSize().background(bgColor).padding(padding)) {
+            if (appointments.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.EventBusy, null, modifier = Modifier.size(64.dp), tint = subtitleColor)
+                        Spacer(Modifier.height(16.dp))
+                        Text("No tienes citas agendadas", color = subtitleColor, fontSize = 16.sp)
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(appointments) { appt ->
-                    AppointmentCard(appt, cardBg, textColor, subtitleColor, dark)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(appointments) { appt ->
+                        AppointmentCard(appt, cardBg, textColor, subtitleColor, dark)
+                    }
                 }
             }
         }

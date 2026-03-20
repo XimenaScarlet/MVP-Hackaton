@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.univapp.data.Profesor
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,8 +61,7 @@ fun AdminEditMateriaScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color(0xFFF8F9FA),
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Editar Materia", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1D2939)) },
@@ -118,7 +119,7 @@ fun AdminEditMateriaScreen(
         ) {
             Spacer(Modifier.height(32.dp))
             
-            // Icono con Badge de Cámara (Estilo idéntico a la imagen)
+            // Icono con Badge de Cámara
             Box(contentAlignment = Alignment.BottomEnd) {
                 Surface(
                     modifier = Modifier.size(110.dp),
@@ -144,7 +145,7 @@ fun AdminEditMateriaScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // Tarjeta de Formulario (White Card)
+            // Tarjeta de Formulario
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -153,7 +154,11 @@ fun AdminEditMateriaScreen(
             ) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                     
-                    EditMateriaField(label = "NOMBRE DE LA MATERIA", value = nombre, onValueChange = { nombre = it })
+                    Column {
+                        Text("NOMBRE DE LA MATERIA", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF98A2B3), letterSpacing = 0.5.sp)
+                        Spacer(Modifier.height(8.dp))
+                        ValidatedTextField(value = nombre, onValueChange = { nombre = it }, label = "Nombre", maxLength = 60)
+                    }
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Box(Modifier.weight(0.4f)) {
@@ -168,7 +173,6 @@ fun AdminEditMateriaScreen(
                         }
                     }
 
-                    // Grupo como campo de solo lectura
                     EditMateriaField(
                         label = "GRUPO",
                         value = if (uiState.currentGrupo != null) {
@@ -181,10 +185,10 @@ fun AdminEditMateriaScreen(
                                 "5" -> "Quinto"
                                 "6" -> "Sexto"
                                 "7" -> "Séptimo"
-                                "8" -> "Octavo"
-                                "9" -> "Noveno"
-                                "10" -> "Décimo"
-                                "11" -> "Onceavo"
+                                "8" -> "OCTAVO"
+                                "9" -> "NOVENO"
+                                "10" -> "DÉCIMO"
+                                "11" -> "ONCEAVO"
                                 else -> "Cuatrimestre"
                             }
                             "${uiState.currentGrupo?.nombre} — $cuatriText Cuatrimestre"
@@ -193,7 +197,6 @@ fun AdminEditMateriaScreen(
                         trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = Color(0xFF98A2B3)) }
                     )
 
-                    // Profesor como Dropdown funcional
                     EditMateriaDropdown(
                         label = "PROFESOR ASIGNADO",
                         value = selectedProfesor?.nombre ?: "Pendiente por definir",
@@ -207,22 +210,12 @@ fun AdminEditMateriaScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // Unidades de Aprendizaje (Solo lectura y sin botón Añadir)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Unidades de Aprendizaje",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF1D2939)
-                )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Unidades de Aprendizaje", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1D2939))
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Lista de Unidades Estilizada como en la imagen
             val demoUnits = listOf(
                 "Fundamentos de Arquitectura" to "Unidad 1 • 4 Temas",
                 "Patrones de Diseño" to "Unidad 2 • 6 Temas",
@@ -243,23 +236,16 @@ fun AdminEditMateriaScreen(
 private fun EditMateriaField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit = {},
     leadingIcon: ImageVector? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     readOnly: Boolean = false
 ) {
     Column {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF98A2B3),
-            letterSpacing = 0.5.sp
-        )
+        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF98A2B3), letterSpacing = 0.5.sp)
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = {},
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             leadingIcon = leadingIcon?.let { icon -> { Icon(icon, null, tint = Color(0xFF98A2B3), modifier = Modifier.size(20.dp)) } },
@@ -292,13 +278,7 @@ private fun <T> EditMateriaDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF98A2B3),
-            letterSpacing = 0.5.sp
-        )
+        Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF98A2B3), letterSpacing = 0.5.sp)
         Spacer(Modifier.height(8.dp))
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
@@ -343,24 +323,12 @@ private fun UnitEditItemStyled(title: String, subtitle: String) {
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF2F4F7))
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.DragIndicator, null, tint = Color(0xFFD0D5DD), modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = Color(0xFF1D2939)
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    color = Color(0xFF98A2B3)
-                )
+                Text(text = title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1D2939))
+                Text(text = subtitle, fontSize = 12.sp, color = Color(0xFF98A2B3))
             }
         }
     }

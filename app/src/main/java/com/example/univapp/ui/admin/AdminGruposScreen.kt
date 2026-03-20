@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.univapp.data.Carrera
 import com.example.univapp.data.Grupo
+import com.example.univapp.ui.util.AppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +42,7 @@ fun AdminGruposScreen(
 
     val isCarreraSelected = uiState.selectedCarrera != null
 
-    Scaffold(
-        containerColor = Color.White,
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Grupos", fontWeight = FontWeight.Bold) },
@@ -84,7 +84,12 @@ fun AdminGruposScreen(
             }
         }
     ) { padding ->
-        Column(Modifier.padding(padding)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .padding(padding)
+        ) {
             if (!isCarreraSelected) {
                 // Selector de Tipo (TSU / ING)
                 Row(

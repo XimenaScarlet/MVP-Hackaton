@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
 
 @Composable
 fun HealthScreen(
@@ -31,14 +32,13 @@ fun HealthScreen(
     onOpenPsychSupport: () -> Unit = {},
     onOpenMedicalSupport: () -> Unit = {},
     onTriggerSOS: () -> Unit = {},
-    onViewAppointments: () -> Unit = {}, // Nueva acción
+    onViewAppointments: () -> Unit = {},
     settingsVm: SettingsViewModel = viewModel(),
-    medicalVm: MedicalAppointmentViewModel = viewModel() // Acceso a las citas
+    medicalVm: MedicalAppointmentViewModel = viewModel()
 ) {
     val dark by settingsVm.darkMode.collectAsState()
     val appointments by medicalVm.userAppointments.collectAsState()
 
-    // Dynamic Colors
     val bgColor = if (dark) Color(0xFF0F172A) else Color(0xFFF9FAFB)
     val titleColor = if (dark) Color.White else Color(0xFF111827)
     val subtitleColor = if (dark) Color(0xFF94A3B8) else Color(0xFF6B7280)
@@ -46,19 +46,18 @@ fun HealthScreen(
     val cardSubtitleColor = if (dark) Color(0xFF94A3B8) else Color(0xFF4B5563)
     val iconCircleBg = if (dark) Color(0xFF334155) else Color.White
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = bgColor
-    ) {
+    AppScaffold { pv ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(bgColor)
+                .padding(pv)
                 .padding(horizontal = 24.dp)
-                .padding(top = 20.dp, bottom = 40.dp),
+                .padding(bottom = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier.align(Alignment.CenterStart)
@@ -88,7 +87,6 @@ fun HealthScreen(
                     )
                 }
 
-                // ICONO DE CITAS (Solo si tiene citas)
                 if (appointments.isNotEmpty()) {
                     IconButton(
                         onClick = onViewAppointments,
@@ -111,9 +109,8 @@ fun HealthScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Doctor Card
             HealthActionCard(
                 title = "Doctor",
                 subtitle = "Atención médica general",
@@ -128,7 +125,6 @@ fun HealthScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Psicología Card
             HealthActionCard(
                 title = "Psicología",
                 subtitle = "Apoyo emocional y mental",
@@ -143,7 +139,6 @@ fun HealthScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Emergencias Section
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "EMERGENCIAS",

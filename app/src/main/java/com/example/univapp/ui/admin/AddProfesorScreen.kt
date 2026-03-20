@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.univapp.ui.util.AppScaffold
+import com.example.univapp.ui.util.ValidatedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,8 +49,7 @@ fun AddProfesorScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color(0xFFF8F9FA),
+    AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Agregar Profesor", fontWeight = FontWeight.Bold) },
@@ -73,7 +74,7 @@ fun AddProfesorScreen(
                         telefono = telefono,
                         correo = correo,
                         numeroEmpleado = numeroEmpleado,
-                        turno = "", // Turno ya no es parte del UI
+                        turno = "",
                         activo = activo
                     )
                 },
@@ -100,39 +101,39 @@ fun AddProfesorScreen(
                 .verticalScroll(scrollState)
         ) {
             Spacer(Modifier.height(24.dp))
-            // Información personal
             SectionTitle(icon = Icons.Default.Person, title = "INFORMACIÓN PERSONAL")
-            AppStyledTextField(
+            
+            ValidatedTextField(
                 value = nombres,
                 onValueChange = { nombres = it },
                 label = "Nombre(s)",
-                placeholder = "Ej. Juan Pablo"
+                maxLength = 50
             )
             Spacer(Modifier.height(16.dp))
-            AppStyledTextField(
+            ValidatedTextField(
                 value = apellidos,
                 onValueChange = { apellidos = it },
                 label = "Apellidos",
-                placeholder = "Ej. Pérez García"
+                maxLength = 50
             )
             Spacer(Modifier.height(16.dp))
-            AppStyledTextField(
+            ValidatedTextField(
                 value = telefono,
                 onValueChange = { telefono = it },
-                label = "Teléfono",
-                placeholder = "Ej. 55 1234 5678",
-                isOptional = true
+                label = "Teléfono (Opcional)",
+                maxLength = 10,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone)
             )
             Spacer(Modifier.height(24.dp))
 
-            // Datos institucionales
             SectionTitle(icon = Icons.Default.Business, title = "DATOS INSTITUCIONALES")
-            AppStyledTextField(
+            ValidatedTextField(
                 value = correo,
                 onValueChange = { correo = it },
                 label = "Correo Institucional",
-                placeholder = "usuario@universidad.edu.mx",
-                leadingIcon = Icons.Default.Email
+                maxLength = 60,
+                leadingIcon = { Icon(Icons.Default.Email, null, tint = Color.Gray) },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Email)
             )
             Text(
                 "Se validará disponibilidad",
@@ -141,20 +142,25 @@ fun AddProfesorScreen(
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
             Spacer(Modifier.height(16.dp))
-            AppStyledTextField(
+            ValidatedTextField(
                 value = numeroEmpleado,
                 onValueChange = { numeroEmpleado = it },
                 label = "Número de Empleado / ID",
-                placeholder = "Ej. EMP-2023-001"
+                maxLength = 20
             )
             Spacer(Modifier.height(16.dp))
-            AppStyledTextField(
+            OutlinedTextField(
                 value = fechaAlta,
-                onValueChange = { fechaAlta = it },
-                label = "Fecha de Alta",
-                placeholder = "",
-                leadingIcon = Icons.Default.CalendarToday,
-                readOnly = true // El ejemplo muestra una fecha estática
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Fecha de Alta") },
+                leadingIcon = { Icon(Icons.Default.CalendarToday, null, tint = Color.Gray) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = Color.Transparent,
+                    unfocusedContainerColor = Color(0xFFF0F0F0)
+                )
             )
             Spacer(Modifier.height(24.dp))
 
@@ -198,46 +204,4 @@ private fun SectionTitle(icon: ImageVector, title: String) {
         Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
     }
     Spacer(Modifier.height(16.dp))
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AppStyledTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    placeholder: String,
-    isOptional: Boolean = false,
-    leadingIcon: ImageVector? = null,
-    readOnly: Boolean = false
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            if (isOptional) Text("Opcional", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-        }
-        Spacer(Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(placeholder, color = Color.Gray) },
-            leadingIcon = leadingIcon?.let { icon ->
-                { Icon(icon, contentDescription = null, tint = Color.Gray) }
-            },
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF6200EE),
-                unfocusedBorderColor = Color.Transparent,
-                focusedContainerColor = Color(0xFFF0F0F0),
-                unfocusedContainerColor = Color(0xFFF0F0F0)
-            ),
-            readOnly = readOnly
-        )
-    }
 }

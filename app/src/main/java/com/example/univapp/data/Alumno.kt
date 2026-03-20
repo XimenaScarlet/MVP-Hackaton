@@ -34,5 +34,7 @@ data class Alumno(
     var telefonoEmergencia: String? = null,
     var direccion: String? = null,
     
+    var authUid: String? = null, // ID de Firebase Authentication vinculado
+    
     @ServerTimestamp val createdAt: Date? = null
 )

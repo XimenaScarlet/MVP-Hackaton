@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.univapp.ui.util.AppScaffold
 
 private val DarkBg = Color(0xFF1C1C2E)
 private val Pink = Color(0xFFE91E63)
@@ -52,50 +53,53 @@ fun AdminHomeScreen(
         AdminItem("Profesores", Icons.Outlined.School,    onGoProfesores),
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBg)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(
-                        brush = Brush.verticalGradient(listOf(Purple, Pink)),
-                        shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
-                    )
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Column {
-                            Text("Hola,", color = Color.White, fontSize = 24.sp)
-                            Text(userName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    AppScaffold { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBg)
+                .padding(padding)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(
+                            brush = Brush.verticalGradient(listOf(Purple, Pink)),
+                            shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
+                        )
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text("Hola,", color = Color.White, fontSize = 24.sp)
+                                Text(userName, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(onClick = onLogout) {
+                                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Salir", tint = Color.White)
+                            }
                         }
-                        IconButton(onClick = onLogout) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Salir", tint = Color.White)
-                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text("Panel de administrador", color = Color.White.copy(alpha = 0.8f))
+                        Text("Accede a los módulos", color = Color.White.copy(alpha = 0.8f))
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Text("Panel de administrador", color = Color.White.copy(alpha = 0.8f))
-                    Text("Accede a los módulos", color = Color.White.copy(alpha = 0.8f))
                 }
-            }
 
-            // Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 20.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(items) { item -> 
-                    AdminCard(title = item.title, icon = item.icon, onClick = item.onClick) 
+                // Grid
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 20.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(items) { item -> 
+                        AdminCard(title = item.title, icon = item.icon, onClick = item.onClick) 
+                    }
                 }
             }
         }
