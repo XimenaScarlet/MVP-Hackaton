@@ -17,8 +17,24 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _pushNotifications = MutableStateFlow(sessionManager.pushNotifications)
     val pushNotifications: StateFlow<Boolean> = _pushNotifications.asStateFlow()
 
-    private val _darkMode = MutableStateFlow(sessionManager.darkMode)
-    val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
+    // El secreto para la actualización inmediata es que todas las pantallas observen este MISMO StateFlow.
+    companion object {
+        private var _darkMode: MutableStateFlow<Boolean>? = null
+        
+        fun getDarkModeFlow(sessionManager: SessionManager): StateFlow<Boolean> {
+            if (_darkMode == null) {
+                _darkMode = MutableStateFlow(sessionManager.darkMode)
+            }
+            return _darkMode!!.asStateFlow()
+        }
+
+        fun updateDarkMode(sessionManager: SessionManager, value: Boolean) {
+            sessionManager.setDarkMode(value)
+            _darkMode?.value = value
+        }
+    }
+
+    val darkMode: StateFlow<Boolean> = getDarkModeFlow(sessionManager)
 
     fun toggleShowEmail(value: Boolean) {
         sessionManager.setShowEmail(value)
@@ -31,8 +47,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleDarkMode(value: Boolean) {
-        sessionManager.setDarkMode(value)
-        _darkMode.value = value
+        updateDarkMode(sessionManager, value)
     }
 
     fun clearCache(): Long {
