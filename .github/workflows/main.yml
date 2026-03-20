@@ -7,6 +7,7 @@ on:
 jobs:
   build_and_distribute:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
@@ -21,11 +22,21 @@ jobs:
         run: chmod +x gradlew
 
       - name: Construir APK de Distribución
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Ver archivos generados
+        run: find app/build/outputs -type f | sort
+
+      - name: Buscar APK generado
+        id: find_apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk -type f -name "*.apk" | head -n 1)
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "APK encontrado: $APK_PATH"
 
       - name: Subir a Firebase App Distribution
         uses: w9jds/firebase-action@master
         with:
-          args: appdistribution:distribute app/build/outputs/apk/release/app-release.apk --app ${{ secrets.FIREBASE_APP_ID }} --groups "testers"
+          args: appdistribution:distribute "${{ steps.find_apk.outputs.apk_path }}" --app ${{ secrets.FIREBASE_APP_ID }} --groups "testers"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
