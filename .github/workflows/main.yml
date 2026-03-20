@@ -24,9 +24,6 @@ jobs:
       - name: Construir APK de Distribución
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Ver archivos generados
-        run: find app/build/outputs -type f | sort
-
       - name: Buscar APK generado
         id: find_apk
         run: |
@@ -37,6 +34,9 @@ jobs:
       - name: Subir a Firebase App Distribution
         uses: w9jds/firebase-action@master
         with:
-          args: appdistribution:distribute "${{ steps.find_apk.outputs.apk_path }}" --app ${{ secrets.FIREBASE_APP_ID }} --groups "testers"
+          args: >-
+            appdistribution:distribute "${{ steps.find_apk.outputs.apk_path }}"
+            --app ${{ secrets.FIREBASE_APP_ID }}
+            --testers "correo1@ejemplo.com,correo2@ejemplo.com"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
