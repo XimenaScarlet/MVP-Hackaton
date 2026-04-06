@@ -6,30 +6,32 @@ import androidx.lifecycle.viewModelScope
 import com.example.univapp.data.Carrera
 import com.example.univapp.data.Grupo
 import com.example.univapp.data.Materia
-import com.example.univapp.data.Profesor
-import com.google.firebase.firestore.FieldValue
+import com.example.univapp.data.repository.MateriaRepository
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class MateriasUiState(
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val error: String? = null,
     val carreras: List<Carrera> = emptyList(),
     val grupos: List<Grupo> = emptyList(),
     val materias: List<Materia> = emptyList(),
-    val profesores: List<Profesor> = emptyList(),
     val selectedCarrera: Carrera? = null,
     val selectedGrupo: Grupo? = null
 )
 
-class AdminMateriasViewModel : ViewModel() {
+@HiltViewModel
+class AdminMateriasViewModel @Inject constructor(
+    private val db: FirebaseFirestore,
+    private val repository: MateriaRepository
+) : ViewModel() {
 
-    private val db = Firebase.firestore
     private var listener: ListenerRegistration? = null
 
     private val _uiState = MutableStateFlow(MateriasUiState())
@@ -41,19 +43,13 @@ class AdminMateriasViewModel : ViewModel() {
 
     private fun listenForCarreras() {
         _uiState.update { it.copy(isLoading = true) }
-        listener?.remove()
-        listener = db.collection("carreras").addSnapshotListener { snapshot, e ->
+        db.collection("carreras").addSnapshotListener { snapshot, e ->
             if (e != null) {
                 _uiState.update { it.copy(isLoading = false, error = "Error al cargar carreras") }
                 return@addSnapshotListener
             }
             val carreras = snapshot?.documents?.mapNotNull { doc ->
-                 try {
-                    doc.toObject(Carrera::class.java)?.apply { id = doc.id }
-                } catch (ex: Exception) {
-                    Log.e("AdminMateriasVM", "Error deserializing carrera ${doc.id}", ex)
-                    null
-                }
+                doc.toObject(Carrera::class.java)?.apply { id = doc.id }
             } ?: emptyList()
             _uiState.update { it.copy(carreras = carreras, isLoading = false) }
         }
@@ -64,20 +60,14 @@ class AdminMateriasViewModel : ViewModel() {
         if (carrera == null) return
 
         _uiState.update { it.copy(isLoading = true) }
-        listener?.remove()
-        listener = db.collection("grupos").whereEqualTo("carreraId", carrera.id)
+        db.collection("grupos").whereEqualTo("carreraId", carrera.id)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     _uiState.update { it.copy(isLoading = false, error = "Error al cargar grupos") }
                     return@addSnapshotListener
                 }
                 val grupos = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        doc.toObject(Grupo::class.java)?.apply { id = doc.id }
-                    } catch (ex: Exception) {
-                        Log.e("AdminMateriasVM", "Error deserializing grupo ${doc.id}", ex)
-                        null
-                    }
+                    doc.toObject(Grupo::class.java)?.apply { id = doc.id }
                 } ?: emptyList()
                 _uiState.update { it.copy(grupos = grupos, isLoading = false) }
             }
@@ -96,15 +86,16 @@ class AdminMateriasViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
                 val materias = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        doc.toObject(Materia::class.java)?.apply { id = doc.id }
-                    } catch (ex: Exception) {
-                        Log.e("AdminMateriasVM", "Error deserializing materia ${doc.id}", ex)
-                        null
-                    }
+                    doc.toObject(Materia::class.java)?.apply { id = doc.id }
                 } ?: emptyList()
                 _uiState.update { it.copy(materias = materias, isLoading = false) }
             }
+    }
+
+    fun agregarMateria(materia: Materia) {
+        viewModelScope.launch {
+            repository.saveMateria(materia)
+        }
     }
 
     override fun onCleared() {

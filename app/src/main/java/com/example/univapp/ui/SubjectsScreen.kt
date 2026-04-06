@@ -16,20 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.univapp.data.Materia
 import com.example.univapp.ui.util.AppScaffold
-
-data class SubjectDetails(
-    val id: String,
-    val name: String,
-    val description: String,
-    val term: Int,
-    val icon: ImageVector,
-    val color: Color
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,46 +31,64 @@ fun SubjectsScreen(
     onBack: () -> Unit,
     onOpenSubject: (Int, String) -> Unit,
     onGoGrades: () -> Unit,
-    settingsVm: SettingsViewModel
+    settingsVm: SettingsViewModel,
+    subjectsVm: SubjectsViewModel = hiltViewModel()
 ) {
     val isDarkMode by settingsVm.darkMode.collectAsState()
-    val teal = Color(0xFF0F6C6D)
-    val darkBg = Color(0xFF101828)
-    val menuBg = if (isDarkMode) Color(0xFF1D2939) else Color.White
+    val subjects by subjectsVm.subjects.collectAsStateWithLifecycle()
+    val isLoading by subjectsVm.loading.collectAsStateWithLifecycle()
+    val currentSemester by subjectsVm.currentSemester.collectAsStateWithLifecycle()
 
-    val allSubjects = remember {
-        listOf(
-            SubjectDetails("1", "Metodología de la Programación", "Fundamentos de lógica y algoritmos.", 1, Icons.Default.Code, Color(0xFF3F51B5)),
-            SubjectDetails("2", "Introducción a las TI", "Panorama general de la tecnología actual.", 1, Icons.Default.Computer, Color(0xFF009688)),
-            SubjectDetails("3", "Matemáticas para TI", "Cálculo y álgebra para computación.", 1, Icons.Default.Calculate, Color(0xFFFF9800)),
-            SubjectDetails("4", "Inglés I", "Nivel inicial de inglés técnico.", 1, Icons.Default.Language, Color(0xFF9C27B0)),
-            SubjectDetails("5", "Formación Sociocultural I", "Desarrollo humano y profesional.", 1, Icons.Default.Groups, Color(0xFFE91E63)),
-            SubjectDetails("6", "Expresión Oral y Escrita I", "Habilidades de comunicación efectiva.", 1, Icons.Default.Campaign, Color(0xFF2196F3)),
-            SubjectDetails("7", "Estructura de Datos", "Gestión eficiente de información en memoria.", 2, Icons.Default.Schema, Color(0xFF795548)),
-            SubjectDetails("8", "Base de Datos I", "Modelado y diseño relacional SQL.", 2, Icons.Default.Storage, Color(0xFF607D8B)),
-            SubjectDetails("9", "Programación Orientada a Objetos", "Paradigma de clases y objetos.", 2, Icons.Default.Extension, Color(0xFF4CAF50)),
-            SubjectDetails("10", "Redes de Área Local", "Configuración de redes y protocolos.", 2, Icons.Default.Router, Color(0xFFF44336)),
-            SubjectDetails("13", "Aplicaciones Web I", "Desarrollo frontend con HTML/JS.", 3, Icons.Default.Html, Color(0xFFFFC107)),
-            SubjectDetails("18", "Aplicaciones Móviles I", "Desarrollo nativo para Android.", 4, Icons.Default.Smartphone, Color(0xFF3D5AFE)),
-            SubjectDetails("25", "Seguridad Informática", "Criptografía y protección de datos.", 5, Icons.Default.Security, Color(0xFFD84315)),
-            SubjectDetails("28", "Inteligencia Artificial", "Machine Learning y redes neuronales.", 6, Icons.Default.AutoGraph, Color(0xFFAD1457)),
-            SubjectDetails("33", "Cloud Computing", "Servicios en la nube AWS y Azure.", 7, Icons.Default.Cloud, Color(0xFF039BE5)),
-            SubjectDetails("38", "Ciberseguridad Avanzada", "Hacking ético e incidentes.", 8, Icons.Default.AdminPanelSettings, Color(0xFFB71C1C)),
-            SubjectDetails("43", "Integradora II", "Proyecto final de titulación.", 9, Icons.Default.RocketLaunch, Color(0xFF1B5E20))
-        )
+    val darkBg = Color(0xFF0B101F)
+    val cardBg = Color(0xFF131A2C)
+    var expanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        subjectsVm.loadUserSemesterAndSubjects()
     }
-
-    var selectedTerm by remember { mutableIntStateOf(1) }
-    val filteredSubjects = allSubjects.filter { it.term == selectedTerm }
 
     AppScaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Materias", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White) } },
+                actions = {
+                    Surface(
+                        onClick = { expanded = true },
+                        color = Color(0xFF1E293B),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(end = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CalendarToday, null, tint = Color(0xFF818CF8), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            // Muestra el número del semestre seleccionado (7, 8, 9 o 10)
+                            Text(text = "$currentSemester", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                    
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(cardBg)
+                    ) {
+                        (7..10).forEach { term ->
+                            DropdownMenuItem(
+                                text = { Text("Cuatrimestre $term", color = Color.White) },
+                                onClick = { 
+                                    subjectsVm.setSemester(term) // Actualiza el cuatrimestre y carga materias de DB
+                                    expanded = false 
+                                }
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (isDarkMode) darkBg else Color.White,
-                    titleContentColor = if (isDarkMode) Color.White else Color.Black
+                    containerColor = darkBg,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -85,85 +97,31 @@ fun SubjectsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(if (isDarkMode) darkBg else Color(0xFFF8F9FB))
+                .background(darkBg)
         ) {
-            var expanded by remember { mutableStateOf(false) }
-            
-            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = "Cuatrimestre $selectedTerm",
-                        onValueChange = {},
-                        readOnly = true,
-                        leadingIcon = { Icon(Icons.Default.CalendarToday, null, tint = teal) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = teal,
-                            unfocusedBorderColor = if (isDarkMode) Color.Gray.copy(alpha = 0.3f) else Color.LightGray
-                        )
-                    )
-                    
-                    // Estilo Popover Premium
-                    MaterialTheme(
-                        shapes = MaterialTheme.shapes.copy(extraSmall = RoundedCornerShape(24.dp))
-                    ) {
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(menuBg)
-                        ) {
-                            (1..9).forEach { term ->
-                                val isSelected = selectedTerm == term
-                                DropdownMenuItem(
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Today, 
-                                            null, 
-                                            tint = if(isSelected) teal else Color.Gray,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    },
-                                    text = { 
-                                        Text(
-                                            "Cuatrimestre $term",
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isSelected) teal else if (isDarkMode) Color.White else Color.Black
-                                        ) 
-                                    },
-                                    trailingIcon = {
-                                        if (isSelected) {
-                                            Icon(Icons.Default.Check, null, tint = teal, modifier = Modifier.size(18.dp))
-                                        }
-                                    },
-                                    onClick = { 
-                                        selectedTerm = term
-                                        expanded = false
-                                    },
-                                    modifier = Modifier
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) teal.copy(alpha = 0.1f) else Color.Transparent),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
-                                )
-                            }
-                        }
-                    }
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF818CF8))
                 }
-            }
-            
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(filteredSubjects) { subject ->
-                    CourseCard(subject = subject, onClick = { onOpenSubject(subject.term, subject.id) })
+            } else if (subjects.isEmpty()) {
+                EmptySubjectsView()
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(subjects) { materia ->
+                        val visual = mapMateriaToVisual(materia)
+                        CourseCard(
+                            name = materia.nombre,
+                            aula = materia.aula,
+                            icon = visual.first,
+                            color = visual.second,
+                            onClick = { onOpenSubject(currentSemester, materia.id) }
+                        )
+                    }
                 }
             }
         }
@@ -171,31 +129,128 @@ fun SubjectsScreen(
 }
 
 @Composable
-fun CourseCard(subject: SubjectDetails, onClick: () -> Unit) {
+fun EmptySubjectsView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            Box(
+                modifier = Modifier
+                    .size(160.dp)
+                    .clip(RoundedCornerShape(40.dp))
+                    .background(Color(0xFFFFFFFF).copy(alpha = 0.05f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MenuBook,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = Color(0xFFB8BFFF)
+                )
+            }
+            
+            Surface(
+                modifier = Modifier
+                    .size(56.dp)
+                    .offset(x = 10.dp, y = (-10).dp),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFF4FC3F7)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.School,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = Color(0xFF0B101F)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        Text(
+            text = "No tienes\nmaterias\nasignadas.",
+            style = MaterialTheme.typography.headlineLarge,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            lineHeight = 40.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Explora nuestros cursos disponibles para comenzar tu aprendizaje.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFF94A3B8),
+            textAlign = TextAlign.Center,
+            lineHeight = 24.sp
+        )
+    }
+}
+
+@Composable
+fun CourseCard(name: String, aula: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 260.dp)
+            .height(240.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1D2939)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF131A2C)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(subject.color.copy(alpha = 0.2f)),
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(subject.icon, null, tint = subject.color, modifier = Modifier.size(24.dp))
+                Icon(icon, null, tint = color, modifier = Modifier.size(28.dp))
             }
-            Spacer(Modifier.height(20.dp))
-            Text(text = subject.name, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, lineHeight = 20.sp)
+            
+            Spacer(Modifier.height(24.dp))
+            
+            Text(
+                text = name, 
+                color = Color.White, 
+                fontWeight = FontWeight.Bold, 
+                fontSize = 16.sp, 
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp
+            )
+            
             Spacer(Modifier.height(12.dp))
-            Text(text = subject.description, color = Color(0xFF98A2B3), fontSize = 13.sp, lineHeight = 18.sp)
-            Spacer(Modifier.weight(1f))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.LocationCity, null, tint = Color(0xFF64748B), modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(text = aula, color = Color(0xFF64748B), fontSize = 13.sp)
+            }
         }
+    }
+}
+
+private fun mapMateriaToVisual(materia: Materia): Pair<androidx.compose.ui.graphics.vector.ImageVector, Color> {
+    val n = materia.nombre.lowercase()
+    return when {
+        n.contains("programación") || n.contains("software") -> Icons.Default.Code to Color(0xFF6366F1)
+        n.contains("cálculo") || n.contains("matemáticas") || n.contains("probabilidad") -> Icons.Default.Functions to Color(0xFFA855F7)
+        n.contains("estructuras") || n.contains("metodologías") -> Icons.Default.Schema to Color(0xFF3B82F6)
+        n.contains("inglés") -> Icons.Default.Language to Color(0xFF0EA5E9)
+        n.contains("bases de datos") -> Icons.Default.Storage to Color(0xFF8B5CF6)
+        n.contains("arquitectura") -> Icons.Default.Memory to Color(0xFFEC4899)
+        else -> Icons.Default.Book to Color(0xFF10B981)
     }
 }

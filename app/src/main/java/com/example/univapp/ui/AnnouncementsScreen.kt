@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.firebase.firestore.Query
+import com.example.univapp.ui.util.AppScaffold
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,29 +49,17 @@ class AnnouncementsViewModel : ViewModel() {
     }
 
     private fun fetchAnnouncements() {
-        // Quitamos el filtro de "activo" para que se vean todos los publicados
         db.collection("avisos")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
-                
                 val list = snapshot?.documents?.mapNotNull { doc ->
-                    // Mapeo manual para soportar campos en Inglés y Español
                     val title = doc.getString("title") ?: doc.getString("titulo") ?: "Sin título"
                     val body = doc.getString("body") ?: doc.getString("descripcion") ?: ""
                     val time = doc.getTimestamp("timestamp") ?: doc.getTimestamp("fecha")
                     val cat = doc.getString("category") ?: doc.getString("categoria") ?: "General"
                     val isUrgent = doc.getBoolean("urgent") ?: doc.getBoolean("urgente") ?: false
-                    
-                    NoticeItem(
-                        id = doc.id,
-                        titulo = title,
-                        descripcion = body,
-                        fecha = time,
-                        categoria = cat,
-                        urgente = isUrgent
-                    )
+                    NoticeItem(doc.id, title, body, time, cat, isUrgent)
                 }?.sortedByDescending { it.fecha } ?: emptyList()
-                
                 _notices.value = list
             }
     }
@@ -86,41 +74,34 @@ fun AnnouncementsScreen(
     val dark by settingsVm.darkMode.collectAsState()
     val notices by announcementsVm.notices.collectAsState()
 
-    val bgColor = if (dark) Color(0xFF0F172A) else Color(0xFFF9FAFB)
-    val cardBg = if (dark) Color(0xFF1E293B) else Color.White
-    val titleColor = if (dark) Color.White else Color(0xFF1A1C1E)
-    val bodyColor = if (dark) Color(0xFF94A3B8) else Color(0xFF4B5563)
+    val darkBg = Color(0xFF0B101F)
+    val cardBg = Color(0xFF131A2C)
 
-    Surface(modifier = Modifier.fillMaxSize(), color = bgColor) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = if (dark) Color(0xFF1E293B) else Color.White,
-                shadowElevation = 1.dp
-            ) {
-                Box(modifier = Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
-                    IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = titleColor, modifier = Modifier.size(32.dp))
+    AppScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Avisos Universitarios", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                     }
-                    Text("Avisos Universitarios", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = titleColor)
-                }
-            }
-
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = darkBg)
+            )
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().background(darkBg).padding(padding)) {
             if (notices.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Campaign, null, modifier = Modifier.size(64.dp), tint = Color.LightGray)
-                        Spacer(Modifier.height(16.dp))
-                        Text("No hay avisos publicados.", color = Color.Gray)
-                    }
+                    Text("No hay avisos publicados.", color = Color.Gray)
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     items(notices) { notice ->
-                        AnnouncementCard(notice, cardBg, titleColor, bodyColor, dark)
+                        AnnouncementPremiumCard(notice, cardBg)
                     }
                 }
             }
@@ -129,48 +110,102 @@ fun AnnouncementsScreen(
 }
 
 @Composable
-private fun AnnouncementCard(notice: NoticeItem, cardBg: Color, titleColor: Color, bodyColor: Color, isDark: Boolean) {
-    val categoryColor = when (notice.categoria.lowercase()) {
-        "pagos" -> Color(0xFF8B5CF6)
-        "académico", "academico" -> Color(0xFF3B82F6)
-        "eventos" -> Color(0xFF10B981)
-        else -> Color(0xFF64748B)
+fun AnnouncementPremiumCard(notice: NoticeItem, cardBg: Color) {
+    val accentColor = when (notice.categoria.lowercase()) {
+        "pagos", "pago" -> Color(0xFFFF6B6B)
+        "entrega", "académico" -> Color(0xFF4FC3F7)
+        else -> Color(0xFF818CF8)
+    }
+
+    val icon = when (notice.categoria.lowercase()) {
+        "pagos", "pago" -> Icons.Default.Error
+        "entrega" -> Icons.Default.Inventory2
+        else -> Icons.Default.Campaign
     }
 
     val timeStr = if (notice.fecha != null) {
-        SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(notice.fecha.toDate())
-    } else "Reciente"
+        SimpleDateFormat("dd MMM, hh:mm a", Locale("es", "MX")).format(notice.fecha.toDate()).uppercase()
+    } else "RECIENTE"
 
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        elevation = CardDefaults.cardElevation(2.dp)
+        color = cardBg,
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
     ) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.width(6.dp).fillMaxHeight().background(if (notice.urgente) Color.Red else categoryColor))
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = notice.titulo, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = titleColor, modifier = Modifier.weight(1f))
-                    if (notice.urgente) {
-                        Icon(Icons.Default.Warning, null, tint = Color.Red, modifier = Modifier.size(18.dp))
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            // Línea de acento lateral - Solo a la izquierda
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .padding(vertical = 16.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accentColor)
+            )
+
+            Column(modifier = Modifier.padding(24.dp).weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = notice.titulo,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            if (notice.urgente) {
+                                Box(modifier = Modifier.padding(start = 8.dp).size(6.dp).background(accentColor, CircleShape))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "$timeStr  •  HACE UN MOMENTO",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF94A3B8),
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.05f)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(icon, null, tint = accentColor, modifier = Modifier.size(22.dp))
+                        }
                     }
                 }
-                Text(text = timeStr, fontSize = 12.sp, color = Color.Gray)
-                Spacer(Modifier.height(12.dp))
-                Text(text = notice.descripcion, fontSize = 14.sp, color = bodyColor, lineHeight = 20.sp)
-                
-                Spacer(Modifier.height(12.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = notice.descripcion,
+                    fontSize = 14.sp,
+                    color = Color(0xFFCBD5E1),
+                    lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Surface(
-                    color = categoryColor.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                 ) {
                     Text(
                         text = notice.categoria.uppercase(),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
-                        color = categoryColor
+                        color = accentColor,
+                        letterSpacing = 1.sp
                     )
                 }
             }

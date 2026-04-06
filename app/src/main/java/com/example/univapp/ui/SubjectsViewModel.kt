@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import android.util.Log
 
 data class GradeData(
     val materiaName: String,
@@ -20,7 +21,8 @@ class SubjectsViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    private val _currentSemester = MutableStateFlow(1)
+    // Inicializamos con 10 para que sea el cuatrimestre "más grande" por defecto
+    private val _currentSemester = MutableStateFlow(10)
     val currentSemester: StateFlow<Int> = _currentSemester
 
     private val _subjects = MutableStateFlow<List<Materia>>(emptyList())
@@ -32,78 +34,83 @@ class SubjectsViewModel : ViewModel() {
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading
 
+    private var userGrupoId: String = ""
+    private var userAlumnoId: String = ""
+
     fun loadUserSemester() {
         loadUserSemesterAndSubjects()
+    }
+
+    fun setSemester(semester: Int) {
+        _currentSemester.value = semester
+        if (userGrupoId.isNotEmpty()) {
+            loadSubjectsBySemester(semester)
+        }
     }
 
     fun loadUserSemesterAndSubjects() {
         val user = auth.currentUser ?: return
         val email = user.email.orEmpty()
-        val matricula = email.substringBefore("@")
         
         _loading.value = true
         viewModelScope.launch {
             try {
-                // Usamos el documento ID (matrícula) que es más confiable, igual que en ProfileViewModel
-                val studentDoc = db.collection("alumnos").document(matricula).get().await()
+                val studentQuery = db.collection("alumnos")
+                    .whereEqualTo("correo", email)
+                    .get()
+                    .await()
                 
-                if (studentDoc.exists()) {
-                    val grupoId = studentDoc.getString("grupoId") ?: ""
-                    val alumnoId = studentDoc.id
+                if (!studentQuery.isEmpty) {
+                    val studentDoc = studentQuery.documents[0]
+                    userGrupoId = studentDoc.getString("groupId") ?: studentDoc.getString("grupoId") ?: ""
+                    userAlumnoId = studentDoc.id
                     
-                    val semestreStr = studentDoc.getString("semestre") ?: studentDoc.getString("carreraId") ?: "1"
-                    // Extraemos los dígitos (ej: "9°" -> "9")
-                    val semestreInt = semestreStr.filter { it.isDigit() }.toIntOrNull() ?: 1
+                    // Si el alumno tiene un semestre en DB, lo respetamos, de lo contrario usamos el 10
+                    val semestreStr = studentDoc.getString("semestre")
+                    val semestreInt = semestreStr?.filter { it.isDigit() }?.toIntOrNull() ?: 10
+                    
                     _currentSemester.value = semestreInt
                     
-                    if (grupoId.isNotEmpty()) {
-                        // Traemos las materias del grupo
-                        val subjectsQuery = db.collection("materias")
-                            .whereEqualTo("grupoId", grupoId)
-                            .get()
-                            .await()
-                        
-                        val materiasList = subjectsQuery.documents.mapNotNull { doc ->
-                            doc.toObject(Materia::class.java)?.apply { id = doc.id }
-                        }
-                        _subjects.value = materiasList
-                        
-                        loadGrades(alumnoId, materiasList)
-                    } else {
-                        _subjects.value = emptyList()
-                        _grades.value = emptyList()
+                    if (userGrupoId.isNotEmpty()) {
+                        loadSubjectsBySemester(semestreInt)
                     }
                 } else {
-                    // Si no existe el documento por matrícula, intentamos por correo por si acaso
-                    val studentQuery = db.collection("alumnos")
-                        .whereEqualTo("correo", email)
-                        .limit(1)
-                        .get()
-                        .await()
-                    
-                    if (!studentQuery.isEmpty) {
-                        val doc = studentQuery.documents[0]
-                        val grupoId = doc.getString("grupoId") ?: ""
-                        val semestreStr = doc.getString("semestre") ?: doc.getString("carreraId") ?: "1"
-                        val semestreInt = semestreStr.filter { it.isDigit() }.toIntOrNull() ?: 1
-                        _currentSemester.value = semestreInt
-                        
-                        if (grupoId.isNotEmpty()) {
-                            val subjectsQuery = db.collection("materias")
-                                .whereEqualTo("grupoId", grupoId)
-                                .get()
-                                .await()
-                            
-                            val materiasList = subjectsQuery.documents.mapNotNull { d ->
-                                d.toObject(Materia::class.java)?.apply { id = d.id }
-                            }
-                            _subjects.value = materiasList
-                            loadGrades(doc.id, materiasList)
-                        }
-                    }
+                    // Si no encontramos al alumno, cargamos por defecto el 10
+                    loadSubjectsBySemester(10)
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("SubjectsVM", "Error: ${e.message}")
+                loadSubjectsBySemester(10)
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
+    private fun loadSubjectsBySemester(semester: Int) {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val periodoStr = when(semester) {
+                    7 -> "7mo"; 8 -> "8vo"; 9 -> "9no"; 10 -> "10mo"; else -> semester.toString()
+                }
+
+                val subjectsQuery = db.collection("materias")
+                    .whereEqualTo("grupoId", userGrupoId)
+                    .whereEqualTo("periodo", periodoStr)
+                    .get()
+                    .await()
+                
+                val materiasList = subjectsQuery.documents.mapNotNull { doc ->
+                    doc.toObject(Materia::class.java)?.apply { id = doc.id }
+                }
+                _subjects.value = materiasList
+                
+                if (userAlumnoId.isNotEmpty()) {
+                    loadGrades(userAlumnoId, materiasList)
+                }
+            } catch (e: Exception) {
+                Log.e("SubjectsVM", "Error loading subjects: ${e.message}")
             } finally {
                 _loading.value = false
             }

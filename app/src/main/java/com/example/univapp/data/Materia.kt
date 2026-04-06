@@ -8,10 +8,15 @@ data class Materia(
     val carreraId: String = "",
     val grupoId: String = "",
     val profesorId: String? = null,
+    val profesorNombre: String? = "Docente por asignar",
     val periodo: String = "",
     val turno: String = "",
     val creditos: Int = 0,
     val clave: String = "",
     val aula: String = "",
-    val descripcion: String = ""
+    val descripcion: String = "",
+    // Campos necesarios para el horario
+    val dia: String = "",
+    val horaInicio: String = "",
+    val horaFin: String = ""
 )
